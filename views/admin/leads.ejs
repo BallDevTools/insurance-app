@@ -1,0 +1,75 @@
+<!-- FILTER -->
+<div class="adm-card adm-filter-card">
+  <form action="/admin/leads" method="GET" class="adm-filter-form">
+    <input type="text" name="q" value="<%= filters.q %>" placeholder="🔍 ค้นหา ชื่อ / เบอร์ / เลขที่">
+    <select name="status">
+      <option value="">ทุกสถานะ</option>
+      <option value="pending"   <%= filters.status==='pending'?'selected':'' %>>รอติดต่อ</option>
+      <option value="contacted" <%= filters.status==='contacted'?'selected':'' %>>ติดต่อแล้ว</option>
+      <option value="completed" <%= filters.status==='completed'?'selected':'' %>>สำเร็จ</option>
+      <option value="cancelled" <%= filters.status==='cancelled'?'selected':'' %>>ยกเลิก</option>
+    </select>
+    <select name="contact">
+      <option value="">ทุกช่องทาง</option>
+      <option value="phone" <%= filters.contact==='phone'?'selected':'' %>>โทรศัพท์</option>
+      <option value="line"  <%= filters.contact==='line'?'selected':'' %>>LINE</option>
+      <option value="email" <%= filters.contact==='email'?'selected':'' %>>อีเมล</option>
+    </select>
+    <button type="submit" class="adm-btn adm-btn-primary">ค้นหา</button>
+    <a href="/admin/leads" class="adm-btn adm-btn-ghost">ล้าง</a>
+  </form>
+</div>
+
+<!-- TABLE -->
+<div class="adm-card adm-card-full">
+  <div class="adm-card-header">
+    <div class="adm-card-title">Leads ทั้งหมด <span class="adm-badge"><%= total %></span></div>
+  </div>
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead><tr>
+        <th>เลขที่</th><th>ลูกค้า</th><th>เบอร์</th><th>รถ</th><th>ประกัน</th>
+        <th>เบี้ย</th><th>ช่องทาง</th><th>สถานะ</th><th>วันที่</th><th>Action</th>
+      </tr></thead>
+      <tbody>
+        <% if (!leads.length) { %><tr><td colspan="10" class="adm-empty-cell">ไม่พบข้อมูล</td></tr><% } %>
+        <% leads.forEach(l=>{ %>
+          <tr>
+            <td><a href="/admin/quotes/<%= l.quote_id %>" class="adm-qnum"><%= l.quote_number %></a></td>
+            <td>
+              <div class="adm-name"><%= l.full_name %></div>
+              <% if (l.email) { %><div class="adm-sub"><%= l.email %></div><% } %>
+            </td>
+            <td><a href="tel:<%= l.phone %>" class="adm-phone"><%= l.phone %></a></td>
+            <td><div><%= l.car_brand %> <%= l.car_model %></div><div class="adm-sub">ปี <%= l.car_year %></div></td>
+            <td><span class="adm-type-pill adm-type-<%= l.insurance_type %>"><%= TYPE_MAP[l.insurance_type] %></span></td>
+            <td class="adm-money">฿<%= formatNumber(l.premium_amount) %></td>
+            <td><span class="adm-contact-badge"><%= l.preferred_contact %></span></td>
+            <td><span class="adm-status adm-status-<%= l.status %>"><%= STATUS_MAP[l.status] %></span></td>
+            <td class="adm-dt"><%= new Date(l.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) %></td>
+            <td>
+              <form action="/admin/leads/<%= l.id %>/status" method="POST" style="display:inline">
+                <select name="status" onchange="this.form.submit()" class="adm-inline-select">
+                  <option value="pending"   <%= l.status==='pending'?'selected':'' %>>รอ</option>
+                  <option value="contacted" <%= l.status==='contacted'?'selected':'' %>>ติดต่อ</option>
+                  <option value="completed" <%= l.status==='completed'?'selected':'' %>>สำเร็จ</option>
+                  <option value="cancelled" <%= l.status==='cancelled'?'selected':'' %>>ยกเลิก</option>
+                </select>
+              </form>
+              <a href="/admin/quotes/<%= l.quote_id %>" class="adm-link-sm">ดู →</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (totalPages > 1) { %>
+    <div class="adm-pagination">
+      <% for (let i=1; i<=totalPages; i++) { %>
+        <a href="?page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&contact=<%= filters.contact %>"
+           class="adm-page-btn <%= page===i?'active':'' %>"><%= i %></a>
+      <% } %>
+    </div>
+  <% } %>
+</div>

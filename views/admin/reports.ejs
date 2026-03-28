@@ -1,0 +1,100 @@
+<!-- FUNNEL STATS -->
+<div class="adm-stats">
+  <div class="adm-stat adm-stat-blue">
+    <div class="adm-stat-icon">📋</div>
+    <div>
+      <div class="adm-stat-val"><%= funnel.total_quotes||0 %></div>
+      <div class="adm-stat-lbl">ใบเสนอราคาทั้งหมด</div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-purple">
+    <div class="adm-stat-icon">📞</div>
+    <div>
+      <div class="adm-stat-val"><%= funnel.total_contacted||0 %></div>
+      <div class="adm-stat-lbl">ติดต่อแล้ว</div>
+      <div class="adm-stat-sub"><%= funnel.total_quotes?Math.round(funnel.total_contacted/funnel.total_quotes*100):0 %>% conversion</div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-green">
+    <div class="adm-stat-icon">🏆</div>
+    <div>
+      <div class="adm-stat-val"><%= funnel.total_completed||0 %></div>
+      <div class="adm-stat-lbl">ปิดงานสำเร็จ</div>
+      <div class="adm-stat-sub"><%= funnel.total_contacted?Math.round(funnel.total_completed/funnel.total_contacted*100):0 %>% close rate</div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-orange">
+    <div class="adm-stat-icon">💰</div>
+    <div>
+      <% const totalRev = revenueByType.reduce((s,t)=>s+parseFloat(t.revenue||0),0) %>
+      <div class="adm-stat-val">฿<%= formatNumber(Math.round(totalRev/1000)) %>K</div>
+      <div class="adm-stat-lbl">เบี้ยรวมทั้งหมด</div>
+    </div>
+  </div>
+</div>
+
+<!-- MONTHLY CHART -->
+<div class="adm-card adm-card-full">
+  <div class="adm-card-title">📊 ยอดรายเดือน (12 เดือนล่าสุด)</div>
+  <div class="adm-monthly-chart">
+    <% if (!monthly.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
+    <% const maxQ = Math.max(...monthly.map(m=>m.quotes),1) %>
+    <% monthly.forEach(m=>{ %>
+      <div class="adm-bar-group adm-bar-wide">
+        <div class="adm-bar-track">
+          <div class="adm-bar-fill adm-bar-month" style="height:<%= Math.round(m.quotes/maxQ*100) %>%">
+            <span class="adm-bar-val"><%= m.quotes %></span>
+          </div>
+        </div>
+        <div class="adm-bar-lbl adm-bar-month-lbl"><%= m.month_label %></div>
+        <div class="adm-bar-rev">฿<%= formatNumber(Math.round(parseFloat(m.revenue)/1000)) %>K</div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<div class="adm-charts">
+  <!-- Revenue by Type -->
+  <div class="adm-card">
+    <div class="adm-card-title">💰 เบี้ยแยกตามประเภทประกัน</div>
+    <% const maxRev = Math.max(...revenueByType.map(t=>parseFloat(t.revenue||0)),1) %>
+    <div class="adm-hbars">
+      <% revenueByType.forEach(t=>{ %>
+        <div class="adm-hbar-row">
+          <span class="adm-hbar-lbl"><span class="adm-type-pill adm-type-<%= t.insurance_type %>"><%= TYPE_MAP[t.insurance_type] %></span></span>
+          <div class="adm-hbar-track">
+            <div class="adm-hbar-fill" style="width:<%= Math.round(parseFloat(t.revenue||0)/maxRev*100) %>%"></div>
+          </div>
+          <span class="adm-hbar-val">฿<%= formatNumber(Math.round(parseFloat(t.revenue||0)/1000)) %>K</span>
+        </div>
+      <% }) %>
+    </div>
+    <div style="margin-top:.75rem">
+      <% revenueByType.forEach(t=>{ %>
+        <div class="adm-sub" style="margin-bottom:.25rem"><%= TYPE_MAP[t.insurance_type]%>: <%= t.cnt %> ใบ · ฿<%= formatNumber(Math.round(parseFloat(t.revenue||0))) %></div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- Top 10 Quotes -->
+  <div class="adm-card adm-card-wide">
+    <div class="adm-card-title">🔝 Top 10 ใบเสนอราคา (เบี้ยสูงสุด)</div>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr><th>#</th><th>เลขที่</th><th>รถ</th><th>ประกัน</th><th>เบี้ย</th><th>ลูกค้า</th></tr></thead>
+        <tbody>
+          <% topQuotes.forEach((q,i)=>{ %>
+            <tr>
+              <td><strong>#<%= i+1 %></strong></td>
+              <td><a href="/admin/quotes/<%= q.id %>" class="adm-qnum"><%= q.quote_number %></a></td>
+              <td><%= q.car_brand %> <%= q.car_model %> (<%= q.car_year %>)</td>
+              <td><span class="adm-type-pill adm-type-<%= q.insurance_type %>"><%= TYPE_MAP[q.insurance_type] %></span></td>
+              <td class="adm-money">฿<%= formatNumber(q.premium_amount) %></td>
+              <td><%= q.full_name||'-' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

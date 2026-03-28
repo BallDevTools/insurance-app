@@ -1,0 +1,89 @@
+<div class="adm-detail-grid">
+
+  <!-- LEFT: Quote Info -->
+  <div class="adm-detail-left">
+    <!-- Car Info -->
+    <div class="adm-card">
+      <div class="adm-card-title">🚗 ข้อมูลรถยนต์</div>
+      <div class="adm-info-grid">
+        <div class="adm-info-item"><span class="adm-info-lbl">ยี่ห้อ / รุ่น</span><span class="adm-info-val"><%= quote.car_brand %> <%= quote.car_model %></span></div>
+        <div class="adm-info-item"><span class="adm-info-lbl">ปีผลิต</span><span class="adm-info-val"><%= quote.car_year %></span></div>
+        <div class="adm-info-item"><span class="adm-info-lbl">ทะเบียน</span><span class="adm-info-val"><span class="adm-plate"><%= quote.license_plate %></span></span></div>
+        <div class="adm-info-item"><span class="adm-info-lbl">จังหวัด</span><span class="adm-info-val"><%= quote.province %></span></div>
+        <div class="adm-info-item"><span class="adm-info-lbl">มูลค่ารถ</span><span class="adm-info-val">฿<%= formatNumber(quote.car_value) %></span></div>
+        <div class="adm-info-item"><span class="adm-info-lbl">ประเภทประกัน</span><span class="adm-info-val"><span class="adm-type-pill adm-type-<%= quote.insurance_type %>"><%= TYPE_MAP[quote.insurance_type] %></span></span></div>
+      </div>
+    </div>
+
+    <!-- Premium -->
+    <div class="adm-card">
+      <div class="adm-card-title">💰 เบี้ยประกัน</div>
+      <div class="adm-premium-box">
+        <div class="adm-premium-total">฿<%= formatNumber(quote.premium_amount) %></div>
+        <div class="adm-premium-sub">รวม VAT + อากรแสตมป์แล้ว</div>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="adm-card">
+      <div class="adm-card-title">📌 สถานะ</div>
+      <form action="/admin/quotes/<%= quote.id %>/status" method="POST" class="adm-status-form">
+        <select name="status" class="adm-status-select">
+          <option value="pending"   <%= quote.status==='pending'?'selected':'' %>>⏳ รอติดต่อ</option>
+          <option value="contacted" <%= quote.status==='contacted'?'selected':'' %>>📞 ติดต่อแล้ว</option>
+          <option value="completed" <%= quote.status==='completed'?'selected':'' %>>✅ สำเร็จ</option>
+          <option value="cancelled" <%= quote.status==='cancelled'?'selected':'' %>>❌ ยกเลิก</option>
+        </select>
+        <button type="submit" class="adm-btn adm-btn-primary">บันทึก</button>
+      </form>
+    </div>
+
+    <div class="adm-back-link">
+      <a href="/admin/quotes" class="adm-btn adm-btn-ghost">← กลับรายการ</a>
+    </div>
+  </div>
+
+  <!-- RIGHT: Customer + Notes -->
+  <div class="adm-detail-right">
+    <!-- Customer Info -->
+    <div class="adm-card">
+      <div class="adm-card-title">👤 ข้อมูลลูกค้า</div>
+      <% if (lead) { %>
+        <div class="adm-info-grid">
+          <div class="adm-info-item"><span class="adm-info-lbl">ชื่อ-นามสกุล</span><span class="adm-info-val"><%= lead.full_name %></span></div>
+          <div class="adm-info-item"><span class="adm-info-lbl">เบอร์โทร</span><span class="adm-info-val"><a href="tel:<%= lead.phone %>" class="adm-phone"><%= lead.phone %></a></span></div>
+          <div class="adm-info-item"><span class="adm-info-lbl">อีเมล</span><span class="adm-info-val"><%= lead.email||'-' %></span></div>
+          <div class="adm-info-item"><span class="adm-info-lbl">ช่องทาง</span><span class="adm-info-val"><%= lead.preferred_contact %></span></div>
+          <div class="adm-info-item adm-info-full"><span class="adm-info-lbl">หมายเหตุ</span><span class="adm-info-val"><%= lead.notes||'-' %></span></div>
+        </div>
+      <% } else { %>
+        <div class="adm-empty">ยังไม่มีลูกค้ากรอกข้อมูลติดต่อ</div>
+      <% } %>
+    </div>
+
+    <!-- Notes -->
+    <% if (lead) { %>
+    <div class="adm-card">
+      <div class="adm-card-title">📝 บันทึกการติดต่อ</div>
+      <% if (notes.length) { %>
+        <div class="adm-notes-list">
+          <% notes.forEach(n=>{ %>
+            <div class="adm-note-item">
+              <div class="adm-note-text"><%= n.note %></div>
+              <div class="adm-note-meta">โดย <%= n.created_by %> · <%= new Date(n.created_at).toLocaleString('th-TH') %></div>
+            </div>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <div class="adm-empty" style="margin-bottom:.75rem">ยังไม่มีบันทึก</div>
+      <% } %>
+
+      <form action="/admin/leads/<%= lead.id %>/note" method="POST" class="adm-note-form">
+        <textarea name="note" rows="3" placeholder="พิมพ์บันทึกการติดต่อ..." required></textarea>
+        <button type="submit" class="adm-btn adm-btn-primary">บันทึก</button>
+      </form>
+    </div>
+    <% } %>
+  </div>
+
+</div>

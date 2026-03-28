@@ -1,0 +1,84 @@
+<!-- STEP INDICATOR -->
+<div class="steps-bar">
+  <div class="container">
+    <div class="steps">
+      <div class="step done"><div class="step-num">✓</div><div class="step-label">ข้อมูลรถ</div></div>
+      <div class="step-line done"></div>
+      <div class="step done"><div class="step-num">✓</div><div class="step-label">ใบเสนอราคา</div></div>
+      <div class="step-line done"></div>
+      <div class="step done"><div class="step-num">✓</div><div class="step-label">ข้อมูลติดต่อ</div></div>
+      <div class="step-line done"></div>
+      <div class="step active"><div class="step-num">4</div><div class="step-label">เสร็จสิ้น</div></div>
+    </div>
+  </div>
+</div>
+
+<section class="success-section">
+  <div class="container">
+    <div class="success-card">
+      <div class="success-animation">
+        <div class="success-circle">
+          <span class="success-check">✓</span>
+        </div>
+      </div>
+
+      <h1 class="success-title">ส่งข้อมูลสำเร็จแล้ว!</h1>
+      <p class="success-subtitle">ขอบคุณ <strong><%= data.full_name %></strong> ที่ไว้วางใจเรา</p>
+
+      <div class="success-info-box">
+        <div class="success-info-row">
+          <span class="sinfo-label">เลขที่ใบเสนอราคา</span>
+          <span class="sinfo-value"><strong><%= data.quote_number %></strong></span>
+        </div>
+        <div class="success-info-row">
+          <span class="sinfo-label">รถยนต์</span>
+          <span class="sinfo-value"><%= data.car_brand %> <%= data.car_model %> ปี <%= data.car_year %></span>
+        </div>
+        <div class="success-info-row">
+          <span class="sinfo-label">ประเภทประกัน</span>
+          <span class="sinfo-value"><%= insuranceConfig.label %></span>
+        </div>
+        <div class="success-info-row">
+          <span class="sinfo-label">ทะเบียนรถ</span>
+          <span class="sinfo-value plate-number"><%= data.license_plate %></span>
+        </div>
+        <div class="success-info-row">
+          <span class="sinfo-label">เบอร์โทรที่ให้</span>
+          <span class="sinfo-value"><%= data.phone %></span>
+        </div>
+      </div>
+
+      <div class="success-timeline">
+        <h3>ขั้นตอนต่อไป</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-dot active"></div>
+            <div class="timeline-content">
+              <strong>ตอนนี้</strong>
+              <p>ระบบบันทึกข้อมูลของคุณแล้ว</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+              <strong>ภายใน 2 ชั่วโมง</strong>
+              <p>ทีมงานรับข้อมูลและเตรียมใบเสนอราคา</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+              <strong>ภายใน 24 ชั่วโมง</strong>
+              <p>เจ้าหน้าที่จะโทรหาคุณที่เบอร์ <%= data.phone %></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="success-actions">
+        <a href="/" class="btn btn-outline">คำนวณประกันคันอื่น</a>
+        <a href="tel:02xxxxxxxx" class="btn btn-primary">📞 โทรหาเราเลย</a>
+      </div>
+    </div>
+  </div>
+</section>

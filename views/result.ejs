@@ -1,0 +1,234 @@
+<!-- STEP INDICATOR -->
+<div class="steps-bar">
+  <div class="container">
+    <div class="steps">
+      <div class="step done">
+        <div class="step-num">✓</div>
+        <div class="step-label">ข้อมูลรถ</div>
+      </div>
+      <div class="step-line done"></div>
+      <div class="step active">
+        <div class="step-num">2</div>
+        <div class="step-label">ใบเสนอราคา</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-label">ข้อมูลติดต่อ</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-label">เสร็จสิ้น</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="result-section">
+  <div class="container">
+    <div class="result-grid">
+
+      <!-- LEFT: Quote Details -->
+      <div class="quote-card">
+        <div class="quote-header">
+          <div class="quote-header-left">
+            <div class="quote-number">เลขที่ใบเสนอราคา: <strong><%= quote.quote_number %></strong></div>
+            <div class="quote-date">วันที่: <%= new Date(quote.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+          </div>
+          <div class="quote-badge">
+            <% if (quote.insurance_type === 'class1') { %>
+              <span class="badge badge-class1-lg">ประกันชั้น 1</span>
+            <% } else if (quote.insurance_type === 'class2plus') { %>
+              <span class="badge badge-class2-lg">ประกันชั้น 2+</span>
+            <% } else { %>
+              <span class="badge badge-class3-lg">ประกันชั้น 3+</span>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Car Info -->
+        <div class="info-section">
+          <h3 class="section-title">🚗 ข้อมูลรถยนต์</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">ยี่ห้อ / รุ่น</span>
+              <span class="info-value"><%= quote.car_brand %> <%= quote.car_model %></span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">ปีผลิต</span>
+              <span class="info-value"><%= quote.car_year %> (พ.ศ. <%= parseInt(quote.car_year) + 543 %>)</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">ทะเบียนรถ</span>
+              <span class="info-value plate-number"><%= quote.license_plate %></span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">จังหวัด</span>
+              <span class="info-value"><%= quote.province %></span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">มูลค่ารถ (ประเมิน)</span>
+              <span class="info-value"><%= formatNumber(quote.car_value) %> บาท</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Premium Breakdown -->
+        <div class="info-section premium-section">
+          <h3 class="section-title">💰 สรุปเบี้ยประกัน</h3>
+          <div class="premium-breakdown">
+            <div class="premium-row">
+              <span>เบี้ยประกันสุทธิ</span>
+              <span><%= formatNumber(netPremium) %> บาท</span>
+            </div>
+            <div class="premium-row">
+              <span>อากรแสตมป์ (0.4%)</span>
+              <span><%= formatNumber(stampDuty) %> บาท</span>
+            </div>
+            <div class="premium-row">
+              <span>ภาษีมูลค่าเพิ่ม (7%)</span>
+              <span><%= formatNumber(vat) %> บาท</span>
+            </div>
+            <div class="premium-row total">
+              <span>รวมเบี้ยประกันทั้งหมด</span>
+              <span class="total-amount"><%= formatNumber(quote.premium_amount) %> บาท</span>
+            </div>
+          </div>
+          <div class="premium-note">* ราคาประมาณการ บริษัทจะแจ้งราคาจริงภายหลัง</div>
+        </div>
+
+        <!-- Coverage Details -->
+        <div class="info-section">
+          <h3 class="section-title">🛡️ ความคุ้มครอง</h3>
+          <div class="coverage-grid">
+            <% const cd = typeof insuranceConfig.coverageDetails === 'object' ? insuranceConfig.coverageDetails : JSON.parse(quote.coverage_details) %>
+            <% const labels = {
+              ownDamage: 'ความเสียหายต่อรถเรา',
+              thirdPartyBody: 'บุคคลภายนอก (ร่างกาย)',
+              thirdPartyProperty: 'บุคคลภายนอก (ทรัพย์สิน)',
+              theft: 'โจรกรรม',
+              fire: 'ไฟไหม้',
+              flood: 'น้ำท่วม / ภัยธรรมชาติ',
+              personalAccident: 'อุบัติเหตุส่วนบุคคล',
+              medicalExpense: 'ค่ารักษาพยาบาล'
+            } %>
+            <% Object.keys(labels).forEach(key => { %>
+              <div class="coverage-item <%= cd[key] === 'ไม่คุ้มครอง' ? 'not-covered' : 'covered' %>">
+                <span class="cov-icon"><%= cd[key] === 'ไม่คุ้มครอง' ? '✗' : '✓' %></span>
+                <div class="cov-detail">
+                  <div class="cov-name"><%= labels[key] %></div>
+                  <div class="cov-amount"><%= cd[key] %></div>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+
+        <div class="quote-actions">
+          <a href="/" class="btn btn-outline">← คำนวณใหม่</a>
+        </div>
+      </div>
+
+      <!-- RIGHT: Contact Form -->
+      <div class="contact-card">
+        <% if (alreadyContacted) { %>
+          <div class="already-contacted">
+            <div class="check-circle">✓</div>
+            <h3>ส่งข้อมูลแล้ว!</h3>
+            <p>เราได้รับข้อมูลของคุณแล้ว ทีมงานจะติดต่อกลับภายใน 24 ชั่วโมง</p>
+            <a href="/" class="btn btn-primary" style="margin-top:1rem">คำนวณใหม่</a>
+          </div>
+        <% } else { %>
+          <div class="contact-header">
+            <h2>📞 รับข้อเสนอพิเศษ</h2>
+            <p>กรอกข้อมูลเพื่อให้ทีมงานติดต่อกลับพร้อมราคาพิเศษ</p>
+          </div>
+
+          <form action="/contact" method="POST" novalidate>
+            <input type="hidden" name="quote_id" value="<%= quote.id %>">
+            <input type="hidden" name="quote_number" value="<%= quote.quote_number %>">
+
+            <div class="form-group">
+              <label for="full_name">ชื่อ-นามสกุล <span class="required">*</span></label>
+              <input type="text"
+                     id="full_name"
+                     name="full_name"
+                     placeholder="กรอกชื่อ-นามสกุล"
+                     value="<%= old.full_name || '' %>"
+                     class="<%= errors.full_name ? 'error' : '' %>"
+                     required>
+              <% if (errors.full_name) { %>
+                <span class="field-error"><%= errors.full_name %></span>
+              <% } %>
+            </div>
+
+            <div class="form-group">
+              <label for="phone">เบอร์โทรศัพท์ <span class="required">*</span></label>
+              <input type="tel"
+                     id="phone"
+                     name="phone"
+                     placeholder="0XX-XXX-XXXX"
+                     value="<%= old.phone || '' %>"
+                     class="<%= errors.phone ? 'error' : '' %>"
+                     maxlength="12"
+                     required>
+              <% if (errors.phone) { %>
+                <span class="field-error"><%= errors.phone %></span>
+              <% } %>
+            </div>
+
+            <div class="form-group">
+              <label for="email">อีเมล <span class="optional">(ไม่จำเป็น)</span></label>
+              <input type="email"
+                     id="email"
+                     name="email"
+                     placeholder="example@email.com"
+                     value="<%= old.email || '' %>"
+                     class="<%= errors.email ? 'error' : '' %>">
+              <% if (errors.email) { %>
+                <span class="field-error"><%= errors.email %></span>
+              <% } %>
+            </div>
+
+            <div class="form-group">
+              <label>ช่องทางที่สะดวกติดต่อ</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" name="preferred_contact" value="phone"
+                         <%= (!old.preferred_contact || old.preferred_contact === 'phone') ? 'checked' : '' %>>
+                  <span>โทรศัพท์</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="preferred_contact" value="line"
+                         <%= old.preferred_contact === 'line' ? 'checked' : '' %>>
+                  <span>LINE</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="preferred_contact" value="email"
+                         <%= old.preferred_contact === 'email' ? 'checked' : '' %>>
+                  <span>อีเมล</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="notes">หมายเหตุ <span class="optional">(ไม่จำเป็น)</span></label>
+              <textarea id="notes" name="notes" rows="3"
+                        placeholder="ข้อความเพิ่มเติม เช่น เวลาที่สะดวกให้ติดต่อ"><%= old.notes || '' %></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-full">
+              ส่งข้อมูล รับข้อเสนอพิเศษ →
+            </button>
+
+            <div class="privacy-note">
+              🔒 ข้อมูลของคุณปลอดภัย ไม่มีการแชร์ข้อมูลกับบุคคลที่สาม
+            </div>
+          </form>
+        <% } %>
+      </div>
+
+    </div>
+  </div>
+</section>

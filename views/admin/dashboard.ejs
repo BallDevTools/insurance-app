@@ -1,0 +1,148 @@
+<!-- STAT CARDS -->
+<div class="adm-stats">
+  <div class="adm-stat adm-stat-blue">
+    <div class="adm-stat-icon">📋</div>
+    <div>
+      <div class="adm-stat-val"><%= totals.today_quotes || 0 %></div>
+      <div class="adm-stat-lbl">ใบเสนอราคาวันนี้</div>
+      <div class="adm-stat-sub">฿<%= formatNumber(totals.today_premium) %></div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-purple">
+    <div class="adm-stat-icon">📅</div>
+    <div>
+      <div class="adm-stat-val"><%= totals.month_quotes || 0 %></div>
+      <div class="adm-stat-lbl">ใบเสนอราคาเดือนนี้</div>
+      <div class="adm-stat-sub">฿<%= formatNumber(totals.month_premium) %></div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-green">
+    <div class="adm-stat-icon">✅</div>
+    <div>
+      <div class="adm-stat-val"><%= totals.contacted_count || 0 %></div>
+      <div class="adm-stat-lbl">ติดต่อแล้ว</div>
+      <div class="adm-stat-sub">จาก <%= totals.total_quotes %> ใบ</div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-orange">
+    <div class="adm-stat-icon">🏆</div>
+    <div>
+      <div class="adm-stat-val"><%= totals.completed_count || 0 %></div>
+      <div class="adm-stat-lbl">ปิดงานสำเร็จ</div>
+      <div class="adm-stat-sub">฿<%= formatNumber(totals.total_premium) %> รวม</div>
+    </div>
+  </div>
+</div>
+
+<!-- CHARTS -->
+<div class="adm-charts">
+  <!-- Daily Bar Chart -->
+  <div class="adm-card">
+    <div class="adm-card-title">📊 ใบเสนอราคา 7 วันล่าสุด</div>
+    <div class="adm-bar-chart">
+      <% if (!dailyStats.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
+      <% const maxCnt = Math.max(...dailyStats.map(d=>d.cnt), 1) %>
+      <% dailyStats.forEach(d => { %>
+        <div class="adm-bar-group">
+          <div class="adm-bar-track">
+            <div class="adm-bar-fill" style="height:<%= Math.round(d.cnt/maxCnt*100) %>%">
+              <span class="adm-bar-val"><%= d.cnt %></span>
+            </div>
+          </div>
+          <div class="adm-bar-lbl"><%= new Date(d.day).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) %></div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- Donut Chart -->
+  <div class="adm-card">
+    <div class="adm-card-title">🥧 สัดส่วนประเภทประกัน</div>
+    <% const totalCnt = typeBreakdown.reduce((s,t)=>s+parseInt(t.cnt),0)||1 %>
+    <% if (!typeBreakdown.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
+    <% const colors={class1:'#1a56db',class2plus:'#7c3aed',class3plus:'#059669'} %>
+    <%
+      let off=0;
+      const segs=typeBreakdown.map(t=>{
+        const pct=parseInt(t.cnt)/totalCnt*100;
+        const s={type:t.insurance_type,pct,off,cnt:t.cnt,color:colors[t.insurance_type]||'#94a3b8'};
+        off+=pct; return s;
+      })
+    %>
+    <div class="adm-donut-wrap">
+      <svg viewBox="0 0 36 36" class="adm-donut">
+        <% segs.forEach(s=>{ %>
+          <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="<%= s.color %>" stroke-width="3.8"
+            stroke-dasharray="<%= s.pct.toFixed(1) %> <%= (100-s.pct).toFixed(1) %>"
+            stroke-dashoffset="<%= (25-s.off+100).toFixed(1) %>"/>
+        <% }) %>
+        <text x="18" y="19" text-anchor="middle" class="adm-donut-txt"><%= totalCnt %></text>
+      </svg>
+    </div>
+    <div class="adm-legend">
+      <% typeBreakdown.forEach(t=>{ %>
+        <div class="adm-legend-row">
+          <span class="adm-legend-dot" style="background:<%= colors[t.insurance_type]||'#94a3b8' %>"></span>
+          <span class="adm-legend-lbl"><%= TYPE_MAP[t.insurance_type]||t.insurance_type %></span>
+          <span class="adm-legend-cnt"><%= t.cnt %> (<%= Math.round(parseInt(t.cnt)/totalCnt*100) %>%)</span>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- Top Provinces + Brands -->
+  <div class="adm-card">
+    <div class="adm-card-title">📍 Top 5 จังหวัด</div>
+    <% const maxP=Math.max(...topProvinces.map(p=>p.cnt),1) %>
+    <div class="adm-hbars">
+      <% topProvinces.forEach((p,i)=>{ %>
+        <div class="adm-hbar-row">
+          <span class="adm-hbar-lbl"><span class="adm-rank">#<%= i+1 %></span> <%= p.province %></span>
+          <div class="adm-hbar-track"><div class="adm-hbar-fill" style="width:<%= Math.round(p.cnt/maxP*100) %>%"></div></div>
+          <span class="adm-hbar-val"><%= p.cnt %></span>
+        </div>
+      <% }) %>
+    </div>
+    <div class="adm-card-title" style="margin-top:1rem">🚗 Top 5 ยี่ห้อ</div>
+    <% const maxB=Math.max(...topBrands.map(b=>b.cnt),1) %>
+    <div class="adm-hbars">
+      <% topBrands.forEach((b,i)=>{ %>
+        <div class="adm-hbar-row">
+          <span class="adm-hbar-lbl"><span class="adm-rank">#<%= i+1 %></span> <%= b.car_brand %></span>
+          <div class="adm-hbar-track"><div class="adm-hbar-fill adm-hbar-purple" style="width:<%= Math.round(b.cnt/maxB*100) %>%"></div></div>
+          <span class="adm-hbar-val"><%= b.cnt %></span>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</div>
+
+<!-- RECENT LEADS -->
+<div class="adm-card adm-card-full">
+  <div class="adm-card-header">
+    <div class="adm-card-title">📞 Leads ล่าสุด</div>
+    <a href="/admin/leads" class="adm-link-btn">ดูทั้งหมด →</a>
+  </div>
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead><tr>
+        <th>เลขที่</th><th>ลูกค้า</th><th>เบอร์</th><th>รถ</th><th>ประกัน</th><th>เบี้ย</th><th>สถานะ</th><th>วันที่</th>
+      </tr></thead>
+      <tbody>
+        <% if (!recentLeads.length) { %><tr><td colspan="8" class="adm-empty-cell">ยังไม่มี leads</td></tr><% } %>
+        <% recentLeads.forEach(l=>{ %>
+          <tr>
+            <td><a href="/admin/quotes/<%= l.quote_id %>" class="adm-qnum"><%= l.quote_number %></a></td>
+            <td><div class="adm-name"><%= l.full_name %></div><div class="adm-sub"><%= l.email||'' %></div></td>
+            <td><a href="tel:<%= l.phone %>" class="adm-phone"><%= l.phone %></a></td>
+            <td><div><%= l.car_brand %> <%= l.car_model %></div><div class="adm-sub">ปี <%= l.car_year %></div></td>
+            <td><span class="adm-type-pill adm-type-<%= l.insurance_type %>"><%= TYPE_MAP[l.insurance_type] %></span></td>
+            <td class="adm-money">฿<%= formatNumber(l.premium_amount) %></td>
+            <td><span class="adm-status adm-status-<%= l.status %>"><%= STATUS_MAP[l.status] %></span></td>
+            <td class="adm-dt"><%= new Date(l.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,304 @@
+<div class="admin-wrap">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">
+      <span>🛡️</span>
+      <span>Admin Panel</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin" class="sidebar-link active">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="/" class="sidebar-link" target="_blank">
+        <span class="nav-icon">🌐</span> หน้าเว็บหลัก
+      </a>
+    </nav>
+    <div class="sidebar-footer">ระบบประกันรถยนต์ v1.0</div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="admin-main">
+
+    <!-- TOP BAR -->
+    <header class="admin-topbar">
+      <h1 class="admin-title">📊 Dashboard สรุปยอด</h1>
+      <div class="topbar-right">
+        <span class="topbar-date">
+          <%= new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %>
+        </span>
+        <button onclick="location.reload()" class="btn-refresh">🔄 รีเฟรช</button>
+      </div>
+    </header>
+
+    <!-- STAT CARDS -->
+    <section class="stats-grid">
+      <div class="stat-card stat-blue">
+        <div class="stat-icon">📋</div>
+        <div class="stat-body">
+          <div class="stat-value"><%= totals.today_quotes || 0 %></div>
+          <div class="stat-label">ใบเสนอราคาวันนี้</div>
+          <div class="stat-sub">฿<%= formatNumber(totals.today_premium || 0) %></div>
+        </div>
+      </div>
+      <div class="stat-card stat-purple">
+        <div class="stat-icon">📅</div>
+        <div class="stat-body">
+          <div class="stat-value"><%= totals.month_quotes || 0 %></div>
+          <div class="stat-label">ใบเสนอราคาเดือนนี้</div>
+          <div class="stat-sub">฿<%= formatNumber(totals.month_premium || 0) %></div>
+        </div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-icon">✅</div>
+        <div class="stat-body">
+          <div class="stat-value"><%= totals.contacted_count || 0 %></div>
+          <div class="stat-label">ติดต่อแล้ว (Leads)</div>
+          <div class="stat-sub">จากทั้งหมด <%= totals.total_quotes || 0 %> ใบ</div>
+        </div>
+      </div>
+      <div class="stat-card stat-orange">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-body">
+          <div class="stat-value"><%= totals.pending_count || 0 %></div>
+          <div class="stat-label">รอติดต่อ (Pending)</div>
+          <div class="stat-sub">฿<%= formatNumber(totals.total_premium || 0) %> รวมทั้งหมด</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS ROW -->
+    <section class="charts-row">
+
+      <!-- Daily Bar Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>ใบเสนอราคา 7 วันล่าสุด</h3>
+        </div>
+        <div class="bar-chart">
+          <% const maxCnt = Math.max(...dailyStats.map(d => d.cnt), 1) %>
+          <% if (dailyStats.length === 0) { %>
+            <div class="no-data">ยังไม่มีข้อมูล</div>
+          <% } else { %>
+            <% dailyStats.forEach(d => { %>
+              <div class="bar-group">
+                <div class="bar-track">
+                  <div class="bar-fill" style="height:<%= Math.round((d.cnt / maxCnt) * 100) %>%">
+                    <span class="bar-val"><%= d.cnt %></span>
+                  </div>
+                </div>
+                <div class="bar-label">
+                  <%= new Date(d.day).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) %>
+                </div>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Insurance Type Breakdown -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>สัดส่วนประเภทประกัน</h3>
+        </div>
+        <% const totalCount = typeBreakdown.reduce((s, t) => s + parseInt(t.cnt), 0) || 1 %>
+        <% if (typeBreakdown.length === 0) { %>
+          <div class="no-data">ยังไม่มีข้อมูล</div>
+        <% } else { %>
+          <div class="donut-wrap">
+            <%
+              const colors = { class1: '#1a56db', class2plus: '#7c3aed', class3plus: '#059669' }
+              const labels = { class1: 'ชั้น 1', class2plus: 'ชั้น 2+', class3plus: 'ชั้น 3+' }
+              let offset = 0
+              const segments = typeBreakdown.map(t => {
+                const pct = parseInt(t.cnt) / totalCount * 100
+                const seg = { type: t.type, pct, offset, cnt: t.cnt, total: t.total, color: colors[t.insurance_type] || '#94a3b8', label: labels[t.insurance_type] || t.insurance_type }
+                offset += pct
+                return seg
+              })
+            %>
+            <svg viewBox="0 0 36 36" class="donut-svg">
+              <% segments.forEach(seg => { %>
+                <circle
+                  cx="18" cy="18" r="15.9"
+                  fill="transparent"
+                  stroke="<%= seg.color %>"
+                  stroke-width="3.5"
+                  stroke-dasharray="<%= seg.pct.toFixed(1) %> <%= (100 - seg.pct).toFixed(1) %>"
+                  stroke-dashoffset="<%= (25 - seg.offset + 100).toFixed(1) %>"
+                />
+              <% }) %>
+              <text x="18" y="18" text-anchor="middle" dy=".3em" class="donut-total"><%= totalCount %></text>
+            </svg>
+          </div>
+          <div class="legend">
+            <% typeBreakdown.forEach(t => { %>
+              <div class="legend-item">
+                <span class="legend-dot" style="background:<%= colors[t.insurance_type] || '#94a3b8' %>"></span>
+                <span class="legend-label"><%= labels[t.insurance_type] || t.insurance_type %></span>
+                <span class="legend-cnt"><%= t.cnt %> ใบ</span>
+                <span class="legend-pct">(<%= Math.round(parseInt(t.cnt)/totalCount*100) %>%)</span>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Top Provinces + Brands -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Top 5 จังหวัด</h3>
+        </div>
+        <% const maxProv = Math.max(...topProvinces.map(p => p.cnt), 1) %>
+        <div class="hbar-list">
+          <% topProvinces.forEach((p, i) => { %>
+            <div class="hbar-item">
+              <div class="hbar-label"><span class="hbar-rank">#<%= i+1 %></span> <%= p.province %></div>
+              <div class="hbar-track">
+                <div class="hbar-fill" style="width:<%= Math.round(p.cnt/maxProv*100) %>%"></div>
+              </div>
+              <div class="hbar-val"><%= p.cnt %></div>
+            </div>
+          <% }) %>
+          <% if (topProvinces.length === 0) { %><div class="no-data">ยังไม่มีข้อมูล</div><% } %>
+        </div>
+
+        <div class="chart-header" style="margin-top:1.25rem">
+          <h3>Top 5 ยี่ห้อรถ</h3>
+        </div>
+        <% const maxBrand = Math.max(...topBrands.map(b => b.cnt), 1) %>
+        <div class="hbar-list">
+          <% topBrands.forEach((b, i) => { %>
+            <div class="hbar-item">
+              <div class="hbar-label"><span class="hbar-rank">#<%= i+1 %></span> <%= b.car_brand %></div>
+              <div class="hbar-track">
+                <div class="hbar-fill" style="width:<%= Math.round(b.cnt/maxBrand*100) %>%; background: var(--admin-purple)"></div>
+              </div>
+              <div class="hbar-val"><%= b.cnt %></div>
+            </div>
+          <% }) %>
+          <% if (topBrands.length === 0) { %><div class="no-data">ยังไม่มีข้อมูล</div><% } %>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RECENT LEADS TABLE -->
+    <section class="table-section">
+      <div class="table-header">
+        <h3>📞 Leads ล่าสุด (ลูกค้ากรอกข้อมูลติดต่อ)</h3>
+        <span class="table-count"><%= recentLeads.length %> รายการ</span>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>เลขที่</th>
+              <th>ลูกค้า</th>
+              <th>เบอร์โทร</th>
+              <th>รถ</th>
+              <th>ประกัน</th>
+              <th>เบี้ย (บาท)</th>
+              <th>สถานะ</th>
+              <th>วันที่</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (recentLeads.length === 0) { %>
+              <tr><td colspan="9" class="no-data-cell">ยังไม่มี leads</td></tr>
+            <% } %>
+            <% recentLeads.forEach(lead => { %>
+              <tr>
+                <td><span class="quote-num-badge"><%= lead.quote_number %></span></td>
+                <td>
+                  <div class="lead-name"><%= lead.full_name %></div>
+                  <% if (lead.email) { %><div class="lead-email"><%= lead.email %></div><% } %>
+                </td>
+                <td><a href="tel:<%= lead.phone %>" class="phone-link"><%= lead.phone %></a></td>
+                <td>
+                  <div><%= lead.car_brand %> <%= lead.car_model %></div>
+                  <div class="sub-text">ปี <%= lead.car_year %> · <%= lead.province %></div>
+                </td>
+                <td>
+                  <% const typeMap = { class1: { l: 'ชั้น 1', c: 'class1' }, class2plus: { l: 'ชั้น 2+', c: 'class2' }, class3plus: { l: 'ชั้น 3+', c: 'class3' } } %>
+                  <span class="type-pill type-<%= typeMap[lead.insurance_type]?.c %>">
+                    <%= typeMap[lead.insurance_type]?.l || lead.insurance_type %>
+                  </span>
+                </td>
+                <td class="premium-cell">฿<%= formatNumber(lead.premium_amount) %></td>
+                <td>
+                  <span class="status-pill status-<%= lead.status %>">
+                    <% const statusMap = { pending: 'รอติดต่อ', contacted: 'ติดต่อแล้ว', completed: 'สำเร็จ', cancelled: 'ยกเลิก' } %>
+                    <%= statusMap[lead.status] || lead.status %>
+                  </span>
+                </td>
+                <td class="date-cell">
+                  <%= new Date(lead.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) %>
+                  <div class="sub-text"><%= new Date(lead.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) %></div>
+                </td>
+                <td>
+                  <form action="/admin/status" method="POST" class="status-form">
+                    <input type="hidden" name="quote_id" value="<%= lead.id %>">
+                    <select name="status" onchange="this.form.submit()" class="status-select">
+                      <option value="pending" <%= lead.status==='pending'?'selected':'' %>>รอติดต่อ</option>
+                      <option value="contacted" <%= lead.status==='contacted'?'selected':'' %>>ติดต่อแล้ว</option>
+                      <option value="completed" <%= lead.status==='completed'?'selected':'' %>>สำเร็จ</option>
+                      <option value="cancelled" <%= lead.status==='cancelled'?'selected':'' %>>ยกเลิก</option>
+                    </select>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PENDING QUOTES (ยังไม่กรอก lead) -->
+    <% if (pendingQuotes.length > 0) { %>
+    <section class="table-section">
+      <div class="table-header">
+        <h3>⏳ ใบเสนอราคาที่ยังไม่ติดต่อ</h3>
+        <span class="table-count"><%= pendingQuotes.length %> รายการ</span>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>เลขที่</th>
+              <th>รถ</th>
+              <th>ทะเบียน</th>
+              <th>ประกัน</th>
+              <th>เบี้ย (บาท)</th>
+              <th>จังหวัด</th>
+              <th>วันที่</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% pendingQuotes.forEach(q => { %>
+              <tr>
+                <td><span class="quote-num-badge"><%= q.quote_number %></span></td>
+                <td><%= q.car_brand %> <%= q.car_model %> ปี <%= q.car_year %></td>
+                <td><span class="plate-sm"><%= q.license_plate %></span></td>
+                <td>
+                  <% const typeMap2 = { class1: { l: 'ชั้น 1', c: 'class1' }, class2plus: { l: 'ชั้น 2+', c: 'class2' }, class3plus: { l: 'ชั้น 3+', c: 'class3' } } %>
+                  <span class="type-pill type-<%= typeMap2[q.insurance_type]?.c %>">
+                    <%= typeMap2[q.insurance_type]?.l || q.insurance_type %>
+                  </span>
+                </td>
+                <td class="premium-cell">฿<%= formatNumber(q.premium_amount) %></td>
+                <td><%= q.province %></td>
+                <td class="date-cell">
+                  <%= new Date(q.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <% } %>
+
+  </div><!-- end admin-main -->
+</div><!-- end admin-wrap -->

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> | Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/css/style.css">
+</head>
+<body class="admin-body">
+<div class="adm-wrap">
+
+  <!-- SIDEBAR -->
+  <aside class="adm-sidebar">
+    <div class="adm-logo">
+      <span class="adm-logo-icon">🛡️</span>
+      <span>Admin Panel</span>
+    </div>
+    <nav class="adm-nav">
+      <% const menu = [
+        { href:'/admin',           icon:'📊', label:'Dashboard',        key:'dashboard' },
+        { href:'/admin/quotes',    icon:'📋', label:'ใบเสนอราคา',       key:'quotes' },
+        { href:'/admin/leads',     icon:'👥', label:'Leads ลูกค้า',     key:'leads' },
+        { href:'/admin/reports',   icon:'📈', label:'รายงาน',           key:'reports' },
+        { href:'/admin/cars',      icon:'🚗', label:'จัดการรถยนต์',     key:'cars' },
+        { href:'/admin/provinces', icon:'📍', label:'จัดการจังหวัด',    key:'provinces' },
+        { href:'/admin/settings',  icon:'⚙️',  label:'ตั้งค่าระบบ',     key:'settings' },
+        { href:'/admin/line',      icon:'💬',  label:'LINE Chat',         key:'line' },
+      ] %>
+      <% menu.forEach(item => { %>
+        <a href="<%= item.href %>" class="adm-nav-link <%= activePage===item.key ? 'active' : '' %>">
+          <span class="adm-nav-icon"><%= item.icon %></span>
+          <span><%= item.label %></span>
+        </a>
+      <% }) %>
+      <div class="adm-nav-divider"></div>
+      <a href="/" target="_blank" class="adm-nav-link">
+        <span class="adm-nav-icon">🌐</span><span>หน้าเว็บหลัก</span>
+      </a>
+      <a href="/admin/logout" class="adm-nav-link logout">
+        <span class="adm-nav-icon">🚪</span><span>ออกจากระบบ</span>
+      </a>
+    </nav>
+    <div class="adm-sidebar-foot">v1.0 · <%= new Date().getFullYear() %></div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="adm-main">
+    <header class="adm-topbar">
+      <div class="adm-topbar-left">
+        <button class="adm-menu-btn" onclick="document.querySelector('.adm-sidebar').classList.toggle('open')">☰</button>
+        <h1 class="adm-page-title"><%= title %></h1>
+      </div>
+      <div class="adm-topbar-right">
+        <span class="adm-user">👤 <%= admin?.full_name || admin?.username %></span>
+        <span class="adm-date"><%= new Date().toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) %></span>
+        <a href="/admin/logout" class="adm-logout-btn">ออก</a>
+      </div>
+    </header>
+
+    <div class="adm-content">
+      <%- body %>
+    </div>
+  </div>
+
+</div>
+<script src="/public/js/admin.js"></script>
+</body>
+</html>

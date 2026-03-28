@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> | <%= siteName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/css/style.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="navbar-brand">
+        <span class="brand-icon">🛡️</span>
+        <span class="brand-text">ประกันรถยนต์ <strong>ออนไลน์</strong></span>
+      </a>
+      <div class="navbar-info">
+        <span class="hotline-label">สายด่วน</span>
+        <a href="tel:02-xxx-xxxx" class="hotline-number">02-xxx-xxxx</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- PAGE CONTENT -->
+  <main>
+    <%- body %>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <div class="footer-brand">🛡️ ประกันรถยนต์ออนไลน์</div>
+          <p>บริการประกันรถยนต์ครบวงจร ราคาดี คุ้มครองจริง</p>
+        </div>
+        <div class="footer-col">
+          <h4>บริการของเรา</h4>
+          <ul>
+            <li><a href="/">คำนวณเบี้ยประกัน</a></li>
+            <li><a href="#">เปรียบเทียบแผนประกัน</a></li>
+            <li><a href="#">แจ้งอุบัติเหตุ</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>ติดต่อเรา</h4>
+          <ul>
+            <li>📞 02-xxx-xxxx</li>
+            <li>✉️ info@insurance.co.th</li>
+            <li>⏰ จ–ศ 08:00–18:00</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <%= year %> ประกันรถยนต์ออนไลน์ | สงวนลิขสิทธิ์ทุกประการ</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/public/js/main.js"></script>
+</body>
+</html>

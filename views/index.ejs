@@ -1,0 +1,246 @@
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="container">
+    <div class="hero-content">
+      <span class="hero-badge">✓ ราคาดีที่สุด | ✓ คุ้มครองจริง | ✓ ทำได้ทันที</span>
+      <h1>คำนวณเบี้ยประกันรถยนต์ <br><span class="highlight">ฟรี! ใน 30 วินาที</span></h1>
+      <p>เปรียบเทียบแผนประกันชั้น 1, 2+, 3+ จากบริษัทชั้นนำ ราคาดีที่สุด พร้อมความคุ้มครองครบถ้วน</p>
+    </div>
+  </div>
+</section>
+
+<!-- STEP INDICATOR -->
+<div class="steps-bar">
+  <div class="container">
+    <div class="steps">
+      <div class="step active">
+        <div class="step-num">1</div>
+        <div class="step-label">ข้อมูลรถ</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-label">ใบเสนอราคา</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-label">ข้อมูลติดต่อ</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-label">เสร็จสิ้น</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN FORM -->
+<section class="form-section">
+  <div class="container">
+    <div class="form-card">
+      <div class="form-card-header">
+        <h2>📋 กรอกข้อมูลรถยนต์</h2>
+        <p>กรุณากรอกข้อมูลให้ครบถ้วนเพื่อรับใบเสนอราคาที่แม่นยำ</p>
+      </div>
+
+      <form action="/quote" method="POST" id="carForm" novalidate>
+        <div class="form-body">
+
+          <!-- Row 1: Brand + Model -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="car_brand_id">ยี่ห้อรถยนต์ <span class="required">*</span></label>
+              <div class="select-wrapper">
+                <select id="car_brand_id" name="car_brand_id" class="<%= errors.car_brand ? 'error' : '' %>" required>
+                  <option value="">-- เลือกยี่ห้อ --</option>
+                  <% brands.forEach(b => { %>
+                    <option value="<%= b.id %>" <%= old.car_brand_id == b.id ? 'selected' : '' %>><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <input type="hidden" id="car_brand" name="car_brand" value="<%= old.car_brand || '' %>">
+              <% if (errors.car_brand) { %>
+                <span class="field-error"><%= errors.car_brand %></span>
+              <% } %>
+            </div>
+
+            <div class="form-group">
+              <label for="car_model_id">รุ่นรถยนต์ <span class="required">*</span></label>
+              <div class="select-wrapper">
+                <select id="car_model_id" name="car_model_id" class="<%= errors.car_model ? 'error' : '' %>" required>
+                  <option value="">-- เลือกรุ่นรถ --</option>
+                  <% if (old.car_model_id) { %>
+                    <option value="<%= old.car_model_id %>" selected><%= old.car_model %></option>
+                  <% } %>
+                </select>
+              </div>
+              <input type="hidden" id="car_model" name="car_model" value="<%= old.car_model || '' %>">
+              <% if (errors.car_model) { %>
+                <span class="field-error"><%= errors.car_model %></span>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Row 2: Year + License Plate -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="car_year">ปีผลิต (ค.ศ.) <span class="required">*</span></label>
+              <div class="select-wrapper">
+                <select id="car_year" name="car_year" class="<%= errors.car_year ? 'error' : '' %>" required>
+                  <option value="">-- เลือกปี --</option>
+                  <% years.forEach(y => { %>
+                    <option value="<%= y %>" <%= old.car_year == y ? 'selected' : '' %>><%= y %> (<%= y + 543 %>)</option>
+                  <% }) %>
+                </select>
+              </div>
+              <% if (errors.car_year) { %>
+                <span class="field-error"><%= errors.car_year %></span>
+              <% } %>
+            </div>
+
+            <div class="form-group">
+              <label for="license_plate">ทะเบียนรถ <span class="required">*</span></label>
+              <input type="text"
+                     id="license_plate"
+                     name="license_plate"
+                     placeholder="เช่น กข 1234 หรือ 1กก 1234"
+                     value="<%= old.license_plate || '' %>"
+                     class="<%= errors.license_plate ? 'error' : '' %>"
+                     maxlength="15"
+                     required>
+              <% if (errors.license_plate) { %>
+                <span class="field-error"><%= errors.license_plate %></span>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Row 3: Province -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="province">จังหวัดที่จดทะเบียน <span class="required">*</span></label>
+              <div class="select-wrapper">
+                <select id="province" name="province" class="<%= errors.province ? 'error' : '' %>" required>
+                  <option value="">-- เลือกจังหวัด --</option>
+                  <% provinces.forEach(p => { %>
+                    <option value="<%= p.name %>" <%= old.province === p.name ? 'selected' : '' %>><%= p.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <% if (errors.province) { %>
+                <span class="field-error"><%= errors.province %></span>
+              <% } %>
+            </div>
+            <div class="form-group"></div>
+          </div>
+
+          <!-- Insurance Type Selection -->
+          <div class="form-group full-width">
+            <label>ประเภทประกันที่สนใจ <span class="required">*</span></label>
+            <% if (errors.insurance_type) { %>
+              <span class="field-error"><%= errors.insurance_type %></span>
+            <% } %>
+            <div class="insurance-cards">
+
+              <!-- Class 1 -->
+              <label class="insurance-card">
+                <input type="radio" name="insurance_type" value="class1"
+                       <%= old.insurance_type === 'class1' ? 'checked' : '' %> required>
+                <div class="insurance-card-inner">
+                  <div class="insurance-badge badge-class1">ชั้น 1</div>
+                  <h3>ประกันชั้น 1</h3>
+                  <p class="insurance-sub">คุ้มครองสูงสุด ครอบคลุมทุกกรณี</p>
+                  <ul class="coverage-list">
+                    <li class="yes">✓ รถเราเสียหายทุกกรณี</li>
+                    <li class="yes">✓ รถคู่กรณีเสียหาย</li>
+                    <li class="yes">✓ ไฟไหม้ / โจรกรรม</li>
+                    <li class="yes">✓ น้ำท่วม / ภัยธรรมชาติ</li>
+                    <li class="yes">✓ ค่ารักษาพยาบาล</li>
+                  </ul>
+                  <div class="insurance-rate">~4.2% ของมูลค่ารถ</div>
+                </div>
+              </label>
+
+              <!-- Class 2+ -->
+              <label class="insurance-card">
+                <input type="radio" name="insurance_type" value="class2plus"
+                       <%= old.insurance_type === 'class2plus' ? 'checked' : '' %>>
+                <div class="insurance-card-inner">
+                  <div class="insurance-badge badge-class2">ชั้น 2+</div>
+                  <h3>ประกันชั้น 2+</h3>
+                  <p class="insurance-sub">คุ้มครองดี ราคาประหยัด</p>
+                  <ul class="coverage-list">
+                    <li class="yes">✓ รถเราชนรถยนต์</li>
+                    <li class="yes">✓ รถคู่กรณีเสียหาย</li>
+                    <li class="yes">✓ ไฟไหม้ / โจรกรรม</li>
+                    <li class="no">✗ น้ำท่วม</li>
+                    <li class="yes">✓ ค่ารักษาพยาบาล</li>
+                  </ul>
+                  <div class="insurance-rate">~2.2% ของมูลค่ารถ</div>
+                </div>
+              </label>
+
+              <!-- Class 3+ -->
+              <label class="insurance-card">
+                <input type="radio" name="insurance_type" value="class3plus"
+                       <%= old.insurance_type === 'class3plus' ? 'checked' : '' %>>
+                <div class="insurance-card-inner">
+                  <div class="insurance-badge badge-class3">ชั้น 3+</div>
+                  <h3>ประกันชั้น 3+</h3>
+                  <p class="insurance-sub">ราคาประหยัด คุ้มครองพื้นฐาน</p>
+                  <ul class="coverage-list">
+                    <li class="yes">✓ รถเราชนรถยนต์</li>
+                    <li class="yes">✓ รถคู่กรณีเสียหาย</li>
+                    <li class="no">✗ ไฟไหม้ / โจรกรรม</li>
+                    <li class="no">✗ น้ำท่วม</li>
+                    <li class="yes">✓ อุบัติเหตุส่วนบุคคล</li>
+                  </ul>
+                  <div class="insurance-rate">~1.0% ของมูลค่ารถ</div>
+                </div>
+              </label>
+
+            </div>
+          </div>
+
+        </div><!-- end form-body -->
+
+        <div class="form-footer">
+          <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+            <span class="btn-icon">⚡</span>
+            คำนวณเบี้ยประกัน
+          </button>
+          <p class="form-note">* ราคาเป็นเพียงราคาประมาณการเบื้องต้น บริษัทจะยืนยันราคาจริงอีกครั้ง</p>
+        </div>
+      </form>
+    </div>
+
+    <!-- WHY US -->
+    <div class="why-us">
+      <h2>ทำไมต้องเลือกเรา?</h2>
+      <div class="why-grid">
+        <div class="why-card">
+          <div class="why-icon">💰</div>
+          <h3>ราคาดีที่สุด</h3>
+          <p>เปรียบเทียบราคาจากบริษัทประกันชั้นนำกว่า 10 บริษัท</p>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">⚡</div>
+          <h3>รวดเร็วทันใจ</h3>
+          <p>ทราบผลภายใน 30 วินาที ไม่ต้องรอนาน</p>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">🛡️</div>
+          <h3>คุ้มครองจริง</h3>
+          <p>แผนประกันโปร่งใส ไม่มีข้อยกเว้นซ่อนเร้น</p>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">📞</div>
+          <h3>บริการหลังการขาย</h3>
+          <p>ทีมงานพร้อมช่วยเหลือ 24 ชั่วโมง ตลอดปี</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
@@ -6,60 +6,65 @@
   <title><%= title %> | <%= siteName %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/css/style.css">
 </head>
-<body>
-
-  <!-- NAVBAR -->
-  <nav class="navbar">
+<body class="public-site">
+  <header class="public-nav-wrap">
     <div class="container">
-      <a href="/" class="navbar-brand">
-        <span class="brand-icon">🛡️</span>
-        <span class="brand-text">ประกันรถยนต์ <strong>ออนไลน์</strong></span>
-      </a>
-      <div class="navbar-links">
-        <a href="/compare" class="navbar-link">⚖️ เปรียบเทียบประกัน</a>
-      </div>
-      <div class="navbar-info">
-        <span class="hotline-label">สายด่วน</span>
-        <a href="tel:02-xxx-xxxx" class="hotline-number">02-xxx-xxxx</a>
-      </div>
-    </div>
-  </nav>
+      <nav class="public-nav">
+        <a href="/" class="public-brand">
+          <span class="public-brand-mark">▣</span>
+          <span class="public-brand-copy">
+            <strong>ประกันรถดีดี</strong>
+            <small>Calm premium insurance experience</small>
+          </span>
+        </a>
 
-  <!-- PAGE CONTENT -->
-  <main>
+        <div class="public-nav-links">
+          <a href="/">เช็คราคา</a>
+          <a href="/compare">เปรียบเทียบแผน</a>
+          <a href="/#faq">คำถามที่พบบ่อย</a>
+        </div>
+
+        <div class="public-nav-actions">
+          <a href="tel:02-xxx-xxxx" class="public-nav-phone">02-xxx-xxxx</a>
+          <a href="/compare" class="public-nav-line">ติดต่อทาง LINE</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="public-main">
     <%- body %>
   </main>
 
-  <!-- FOOTER -->
-  <footer class="footer">
+  <footer class="public-footer">
     <div class="container">
-      <div class="footer-grid">
-        <div class="footer-col">
-          <div class="footer-brand">🛡️ ประกันรถยนต์ออนไลน์</div>
-          <p>บริการประกันรถยนต์ครบวงจร ราคาดี คุ้มครองจริง</p>
+      <div class="public-footer-grid">
+        <div>
+          <div class="public-footer-brand">ประกันรถดีดี</div>
+          <p>ประสบการณ์เช็คราคาประกันที่อ่านง่ายขึ้น ดูสบายตา และยังทำงานบนระบบเดิมของโปรเจคนี้ครบเหมือนเดิม</p>
         </div>
-        <div class="footer-col">
-          <h4>บริการของเรา</h4>
+        <div>
+          <h4>บริการ</h4>
           <ul>
-            <li><a href="/">คำนวณเบี้ยประกัน</a></li>
-            <li><a href="/compare">เปรียบเทียบแผนประกัน</a></li>
-            <li><a href="#">แจ้งอุบัติเหตุ</a></li>
+            <li><a href="/">เช็คราคาเบื้องต้น</a></li>
+            <li><a href="/compare">เปรียบเทียบประกัน</a></li>
+            <li><a href="/#faq">คำถามที่พบบ่อย</a></li>
           </ul>
         </div>
-        <div class="footer-col">
-          <h4>ติดต่อเรา</h4>
+        <div>
+          <h4>ติดต่อ</h4>
           <ul>
-            <li>📞 02-xxx-xxxx</li>
-            <li>✉️ info@insurance.co.th</li>
-            <li>⏰ จ–ศ 08:00–18:00</li>
+            <li><a href="tel:02-xxx-xxxx">โทร 02-xxx-xxxx</a></li>
+            <li><a href="mailto:info@insurance.co.th">info@insurance.co.th</a></li>
+            <li>ทุกวัน 08:00 - 18:00</li>
           </ul>
         </div>
       </div>
-      <div class="footer-bottom">
-        <p>&copy; <%= year %> ประกันรถยนต์ออนไลน์ | สงวนลิขสิทธิ์ทุกประการ</p>
+      <div class="public-footer-bottom">
+        <p>&copy; <%= year %> <%= siteName %></p>
       </div>
     </div>
   </footer>

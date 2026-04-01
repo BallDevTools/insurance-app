@@ -47,6 +47,7 @@
       </div>
 
       <form action="/quote" method="POST" id="carForm" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="form-body">
 
           <!-- Row 1: Brand + Model -->
@@ -70,7 +71,7 @@
             <div class="form-group">
               <label for="car_model_id">รุ่นรถยนต์ <span class="required">*</span></label>
               <div class="select-wrapper">
-                <select id="car_model_id" name="car_model_id" class="<%= errors.car_model ? 'error' : '' %>" required>
+                <select id="car_model_id" name="car_model_id" class="<%= errors.car_model ? 'error' : '' %>" required data-default-model-id="<%= old.car_model_id || '' %>">
                   <option value="">-- เลือกรุ่นรถ --</option>
                   <% if (old.car_model_id) { %>
                     <option value="<%= old.car_model_id %>" selected><%= old.car_model %></option>
@@ -135,6 +136,34 @@
             </div>
             <div class="form-group"></div>
           </div>
+
+          <!-- Row 4: Name + Phone (optional) -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">ชื่อ <span class="optional">(ไม่จำเป็น)</span></label>
+              <input type="text"
+                     id="name"
+                     name="name"
+                     placeholder="ชื่อของคุณ"
+                     value="<%= old.name || '' %>"
+                     maxlength="200">
+            </div>
+            <div class="form-group">
+              <label for="phone">เบอร์โทร <span class="optional">(ไม่จำเป็น)</span></label>
+              <input type="tel"
+                     id="phone"
+                     name="phone"
+                     placeholder="0XX-XXX-XXXX"
+                     value="<%= old.phone || '' %>"
+                     maxlength="12">
+            </div>
+          </div>
+
+          <!-- UTM hidden fields -->
+          <input type="hidden" name="utm_source"   value="<%= utm.source   || '' %>">
+          <input type="hidden" name="utm_campaign" value="<%= utm.campaign || '' %>">
+          <input type="hidden" name="utm_medium"   value="<%= utm.medium   || '' %>">
+          <input type="hidden" name="utm_content"  value="<%= utm.content  || '' %>">
 
           <!-- Insurance Type Selection -->
           <div class="form-group full-width">

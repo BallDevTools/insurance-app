@@ -1,0 +1,80 @@
+<% const msgMap = { added:'เพิ่ม Admin สำเร็จ', deleted:'ลบ Admin สำเร็จ', password_reset:'รีเซ็ตรหัสผ่านสำเร็จ' } %>
+<% const errMap = { invalid_input:'ข้อมูลไม่ถูกต้อง (Password อย่างน้อย 6 ตัวอักษร)', username_taken:'Username นี้มีอยู่แล้ว', cannot_delete_self:'ไม่สามารถลบตัวเองได้', password_too_short:'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' } %>
+<% if (msg) { %><div class="adm-alert adm-alert-success">✅ <%= msgMap[msg]||msg %></div><% } %>
+<% if (error) { %><div class="adm-alert adm-alert-danger">❌ <%= errMap[error]||error %></div><% } %>
+
+<div class="adm-two-col">
+
+  <!-- Add Admin -->
+  <div class="adm-card" style="max-width:420px">
+    <div class="adm-card-title">➕ เพิ่ม Admin ใหม่</div>
+    <form action="/admin/admins/add" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="adm-form-group">
+        <label>Username</label>
+        <input type="text" name="username" required minlength="3" maxlength="50" placeholder="username">
+      </div>
+      <div class="adm-form-group">
+        <label>Password (อย่างน้อย 6 ตัวอักษร)</label>
+        <input type="password" name="password" required minlength="6" placeholder="••••••">
+      </div>
+      <div class="adm-form-group">
+        <label>ชื่อ-นามสกุล</label>
+        <input type="text" name="full_name" placeholder="ชื่อที่แสดง">
+      </div>
+      <div class="adm-form-group">
+        <label>Role</label>
+        <select name="role">
+          <option value="agent">Agent (ทั่วไป)</option>
+          <option value="superadmin">Superadmin</option>
+        </select>
+      </div>
+      <button type="submit" class="adm-btn adm-btn-primary adm-btn-full">เพิ่ม Admin</button>
+    </form>
+  </div>
+
+  <!-- Admin List -->
+  <div class="adm-card adm-card-wide">
+    <div class="adm-card-title">👥 รายชื่อ Admin (<%= admins.length %> คน)</div>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr><th>Username</th><th>ชื่อ</th><th>Role</th><th>เข้าสู่ระบบล่าสุด</th><th>จัดการ</th></tr></thead>
+        <tbody>
+          <% admins.forEach(a => { %>
+            <tr>
+              <td><strong><%= a.username %></strong></td>
+              <td><%= a.full_name %></td>
+              <td><span class="adm-role-badge adm-role-<%= a.role %>"><%= a.role === 'superadmin' ? '⭐ Superadmin' : 'Agent' %></span></td>
+              <td class="adm-dt"><%= a.last_login ? new Date(a.last_login).toLocaleString('th-TH') : '-' %></td>
+              <td>
+                <% if (String(a.id) !== String(admin.id)) { %>
+                  <!-- Reset Password -->
+                  <button class="adm-link-sm" onclick="document.getElementById('rp_<%= a.id %>').style.display='block'">รีเซ็ต</button>
+                  <div id="rp_<%= a.id %>" style="display:none;margin-top:.5rem">
+                    <form action="/admin/admins/<%= a.id %>/reset-password" method="POST" style="display:flex;gap:.5rem;align-items:center">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <input type="password" name="new_password" placeholder="รหัสใหม่" minlength="6" required style="width:120px">
+                      <button type="submit" class="adm-btn adm-btn-primary" style="font-size:.8rem;padding:.3rem .7rem">ยืนยัน</button>
+                    </form>
+                  </div>
+                  <!-- Delete -->
+                  <form action="/admin/admins/<%= a.id %>/delete" method="POST" style="display:inline;margin-left:.5rem"
+                        onsubmit="return confirm('ลบ <%= a.username %>?')">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button type="submit" class="adm-btn-del">ลบ</button>
+                  </form>
+                <% } else { %>
+                  <span style="color:#9ca3af;font-size:.82rem">(คุณ)</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:.75rem">
+      <a href="/admin/audit" class="adm-link-sm">📋 ดู Audit Log →</a>
+    </div>
+  </div>
+
+</div>

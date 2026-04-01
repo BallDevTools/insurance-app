@@ -83,60 +83,124 @@ function textMsg(text) {
   return { type: 'text', text }
 }
 
-// สร้าง Flex Message แบบ bubble สำหรับแสดงผลใบเสนอราคา
+// สร้าง Flex Message แบบ bubble สำหรับแสดงผลใบเสนอราคา (ปรับปรุง)
 function quoteBubble(quote) {
   const typeMap = { class1: 'ชั้น 1', class2plus: 'ชั้น 2+', class3plus: 'ชั้น 3+' }
+  const typeColor = { class1: '#1a56db', class2plus: '#7c3aed', class3plus: '#059669' }
+  const color = typeColor[quote.insurance_type] || '#1a56db'
+  const APP = process.env.APP_URL || 'http://localhost:3000'
+  const netPremium = Math.round(quote.premium_amount / 1.07 / 1.004)
+  const stampDuty  = Math.round(netPremium * 0.004)
+  const vat        = Math.round((netPremium + stampDuty) * 0.07)
+
   return {
     type: 'flex',
-    altText: `ใบเสนอราคา ${quote.quote_number}`,
+    altText: `ใบเสนอราคา ${quote.quote_number} — ฿${Number(quote.premium_amount).toLocaleString('th-TH')}`,
     contents: {
       type: 'bubble',
+      size: 'mega',
       header: {
         type: 'box',
         layout: 'vertical',
-        backgroundColor: '#1a73e8',
-        contents: [{
-          type: 'text',
-          text: `📋 ${quote.quote_number}`,
-          color: '#ffffff',
-          size: 'md',
-          weight: 'bold'
-        }]
+        backgroundColor: color,
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🛡️ ใบเสนอราคาประกันภัย', color: '#ffffff', size: 'sm', opacity: 0.8 },
+          { type: 'text', text: quote.quote_number, color: '#ffffff', size: 'lg', weight: 'bold' },
+          { type: 'text', text: typeMap[quote.insurance_type] || quote.insurance_type, color: '#ffffff', size: 'sm', margin: 'sm' }
+        ]
       },
       body: {
         type: 'box',
         layout: 'vertical',
         spacing: 'sm',
+        paddingAll: '16px',
         contents: [
-          { type: 'text', text: `🚗 ${quote.car_brand} ${quote.car_model} ปี ${quote.car_year}`, wrap: true, size: 'sm' },
-          { type: 'text', text: `🛡️ ประกัน${typeMap[quote.insurance_type] || quote.insurance_type}`, size: 'sm' },
-          { type: 'text', text: `📍 ${quote.province}`, size: 'sm' },
-          { type: 'separator' },
           {
-            type: 'text',
-            text: `💰 ${Number(quote.premium_amount).toLocaleString('th-TH')} บาท`,
-            size: 'lg',
-            weight: 'bold',
-            color: '#1a73e8'
+            type: 'box', layout: 'horizontal', margin: 'none',
+            contents: [
+              { type: 'text', text: 'รถยนต์', color: '#9ca3af', size: 'xs', flex: 2 },
+              { type: 'text', text: `${quote.car_brand} ${quote.car_model} ${quote.car_year}`, size: 'xs', flex: 5, weight: 'bold', wrap: true }
+            ]
+          },
+          {
+            type: 'box', layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'ทะเบียน', color: '#9ca3af', size: 'xs', flex: 2 },
+              { type: 'text', text: quote.license_plate, size: 'xs', flex: 5, weight: 'bold' }
+            ]
+          },
+          {
+            type: 'box', layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'จังหวัด', color: '#9ca3af', size: 'xs', flex: 2 },
+              { type: 'text', text: quote.province, size: 'xs', flex: 5 }
+            ]
+          },
+          { type: 'separator', margin: 'md' },
+          {
+            type: 'box', layout: 'horizontal', margin: 'md',
+            contents: [
+              { type: 'text', text: 'เบี้ยสุทธิ', color: '#6b7280', size: 'xs', flex: 3 },
+              { type: 'text', text: `฿${Number(netPremium).toLocaleString('th-TH')}`, size: 'xs', flex: 3, align: 'end' }
+            ]
+          },
+          {
+            type: 'box', layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'อากรแสตมป์ + VAT', color: '#6b7280', size: 'xs', flex: 3 },
+              { type: 'text', text: `฿${Number(stampDuty + vat).toLocaleString('th-TH')}`, size: 'xs', flex: 3, align: 'end' }
+            ]
+          },
+          {
+            type: 'box', layout: 'horizontal', margin: 'sm',
+            backgroundColor: '#eff6ff', paddingAll: '10px', cornerRadius: '8px',
+            contents: [
+              { type: 'text', text: '💰 รวมทั้งสิ้น', size: 'sm', weight: 'bold', flex: 3, color: color },
+              { type: 'text', text: `฿${Number(quote.premium_amount).toLocaleString('th-TH')}`, size: 'lg', weight: 'bold', flex: 3, align: 'end', color: color }
+            ]
           }
         ]
       },
       footer: {
         type: 'box',
         layout: 'vertical',
-        contents: [{
-          type: 'button',
-          action: {
-            type: 'uri',
-            label: 'ดูรายละเอียด',
-            uri: `${process.env.APP_URL || 'http://localhost:3000'}/result/${quote.quote_number}`
+        spacing: 'sm',
+        paddingAll: '12px',
+        contents: [
+          {
+            type: 'button',
+            action: { type: 'uri', label: '📋 ดูใบเสนอราคา', uri: `${APP}/result/${quote.quote_number}` },
+            style: 'primary', color, height: 'sm'
           },
-          style: 'primary',
-          color: '#1a73e8'
-        }]
+          {
+            type: 'button',
+            action: { type: 'uri', label: '⬇ ดาวน์โหลด PDF', uri: `${APP}/result/${quote.quote_number}/pdf` },
+            style: 'secondary', height: 'sm'
+          }
+        ]
       }
     }
   }
 }
 
-module.exports = { validateSignature, replyMessage, pushMessage, getUserProfile, textMsg, quoteBubble }
+// แจ้งเตือนเจ้าหน้าที่เมื่อมี lead ใหม่
+async function notifyAdminNewLead(lead) {
+  const adminId = process.env.LINE_ADMIN_USER_ID
+  if (!adminId) return
+  const typeMap = { class1: 'ชั้น 1', class2plus: 'ชั้น 2+', class3plus: 'ชั้น 3+' }
+  const sourceMap = { organic: 'Organic', line_ads: 'LINE Ads', facebook_ads: 'Facebook Ads', google: 'Google', other: 'อื่นๆ' }
+  const lines = [
+    '🔔 มี Lead ใหม่เข้ามาแล้ว!',
+    `🚗 ${lead.brand} ${lead.model} ปี ${lead.year}`,
+    `🛡️ ประกัน${typeMap[lead.insurance_type] || lead.insurance_type}`,
+    `📍 ${lead.province}`,
+  ]
+  if (lead.name)  lines.push(`👤 ${lead.name}`)
+  if (lead.phone) lines.push(`📞 ${lead.phone}`)
+  lines.push(`📌 แหล่ง: ${sourceMap[lead.source] || lead.source}`)
+  lines.push('\nดู Leads ทั้งหมดที่ Admin Dashboard')
+  return pushMessage(adminId, [textMsg(lines.join('\n'))]).catch(() => {})
+}
+
+module.exports = { validateSignature, replyMessage, pushMessage, getUserProfile, textMsg, quoteBubble, notifyAdminNewLead }

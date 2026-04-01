@@ -9,8 +9,8 @@ const db = require('./db')
 const bcrypt = require('bcryptjs')
 
 async function main() {
-  const username = process.argv[2] || 'admin'
-  const password = process.argv[3] || 'admin1234'
+  const username = process.argv[2] || 'Ballz'
+  const password = process.argv[3] || 'admin321'
   const fullName = process.argv[4] || 'Super Admin'
 
   console.log(`\nสร้าง Admin User: ${username}`)

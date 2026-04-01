@@ -21,17 +21,20 @@
       <% const menu = [
         { href:'/admin',           icon:'📊', label:'Dashboard',        key:'dashboard' },
         { href:'/admin/quotes',    icon:'📋', label:'ใบเสนอราคา',       key:'quotes' },
-        { href:'/admin/leads',     icon:'👥', label:'Leads ลูกค้า',     key:'leads' },
+        { href:'/admin/leads',     icon:'👥', label:'Leads ลูกค้า',     key:'leads', badge:'leads' },
         { href:'/admin/reports',   icon:'📈', label:'รายงาน',           key:'reports' },
-        { href:'/admin/cars',      icon:'🚗', label:'จัดการรถยนต์',     key:'cars' },
         { href:'/admin/provinces', icon:'📍', label:'จัดการจังหวัด',    key:'provinces' },
         { href:'/admin/settings',  icon:'⚙️',  label:'ตั้งค่าระบบ',     key:'settings' },
-        { href:'/admin/line',      icon:'💬',  label:'LINE Chat',         key:'line' },
+        { href:'/admin/line',      icon:'💬',  label:'LINE Chat',         key:'line', badge:'line' },
+        { href:'/admin/admins',    icon:'🔑',  label:'จัดการ Admin',     key:'admins' },
+        { href:'/admin/scraper',   icon:'🕷',  label:'Scraper',           key:'scraper' },
       ] %>
       <% menu.forEach(item => { %>
-        <a href="<%= item.href %>" class="adm-nav-link <%= activePage===item.key ? 'active' : '' %>">
+        <a href="<%= item.href %>" class="adm-nav-link <%= activePage===item.key ? 'active' : '' %>"
+           <% if(item.badge){%>data-badge="<%= item.badge %>"<% } %>>
           <span class="adm-nav-icon"><%= item.icon %></span>
           <span><%= item.label %></span>
+          <% if(item.badge){%><span class="adm-badge" id="badge_<%= item.badge %>" style="display:none">0</span><% } %>
         </a>
       <% }) %>
       <div class="adm-nav-divider"></div>
@@ -66,5 +69,23 @@
 
 </div>
 <script src="/public/js/admin.js"></script>
+<script>
+// Badge notification polling
+(function pollNotifications() {
+  fetch('/admin/api/notifications')
+    .then(r => r.json())
+    .then(data => {
+      ['leads','line'].forEach(type => {
+        const el = document.getElementById('badge_' + type)
+        if (!el) return
+        const count = data[type] || 0
+        el.textContent = count
+        el.style.display = count > 0 ? 'inline-flex' : 'none'
+      })
+    })
+    .catch(() => {})
+  setTimeout(pollNotifications, 30000)  // ทุก 30 วินาที
+})()
+</script>
 </body>
 </html>

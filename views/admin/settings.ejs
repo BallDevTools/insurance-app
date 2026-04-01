@@ -1,6 +1,7 @@
 <% if (saved) { %><div class="adm-alert adm-alert-success">✅ บันทึกการตั้งค่าเรียบร้อย</div><% } %>
 
 <form action="/admin/settings" method="POST">
+<input type="hidden" name="_csrf" value="<%= csrfToken %>">
 <div class="adm-settings-grid">
 
   <!-- Insurance Rates -->
@@ -58,6 +59,33 @@
     <div class="adm-settings-row">
       <label>อีเมลติดต่อ</label>
       <input type="email" name="site_email" value="<%= settings.site_email||'' %>" placeholder="info@...">
+    </div>
+  </div>
+
+  <!-- LINE OA + Facebook CTA URLs -->
+  <div class="adm-card">
+    <div class="adm-card-title">📲 ช่องทาง CTA (ปุ่มในหน้า Result)</div>
+    <div class="adm-settings-note">URL ที่ลูกค้าจะถูก redirect ไปเมื่อกดปุ่ม LINE หรือ Facebook</div>
+    <div class="adm-settings-row">
+      <label>LINE OA URL</label>
+      <input type="url" name="line_oa_url" value="<%= settings.line_oa_url||'' %>" placeholder="https://line.me/R/ti/p/@...">
+    </div>
+    <div class="adm-settings-row">
+      <label>Facebook URL</label>
+      <input type="url" name="facebook_url" value="<%= settings.facebook_url||'' %>" placeholder="https://m.me/...">
+    </div>
+  </div>
+
+  <!-- LINE Admin Notify -->
+  <div class="adm-card">
+    <div class="adm-card-title">🔔 แจ้งเตือน Lead ใหม่ (LINE)</div>
+    <div class="adm-settings-note">LINE User ID ของเจ้าหน้าที่ที่จะรับแจ้งเตือนเมื่อมี lead ใหม่</div>
+    <div class="adm-settings-row">
+      <label>LINE Admin User ID</label>
+      <input type="text" name="line_admin_user_id" value="<%= settings.line_admin_user_id||'' %>" placeholder="Uxxxxxxxxxx...">
+    </div>
+    <div class="adm-settings-note" style="color:#6b7280;font-size:0.8rem">
+      ดู User ID ได้จาก LINE Developers Console หรือ Webhook event → source.userId
     </div>
   </div>
 

@@ -1,0 +1,46 @@
+<div class="adm-card adm-card-full">
+  <div class="adm-card-title" style="display:flex;justify-content:space-between;align-items:center">
+    <span>📋 Audit Log (<%= total %> รายการ)</span>
+    <a href="/admin/admins" class="adm-btn adm-btn-ghost" style="font-size:.82rem">← กลับ</a>
+  </div>
+
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>เวลา</th>
+          <th>Admin</th>
+          <th>Action</th>
+          <th>Target</th>
+          <th>รายละเอียด</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (logs.length === 0) { %>
+          <tr><td colspan="6" class="adm-empty">ยังไม่มี audit log</td></tr>
+        <% } %>
+        <% logs.forEach(l => { %>
+          <tr>
+            <td class="adm-dt" style="white-space:nowrap"><%= new Date(l.created_at).toLocaleString('th-TH') %></td>
+            <td><strong><%= l.admin_username %></strong></td>
+            <td><code style="font-size:.78rem;background:#f3f4f6;padding:.1rem .35rem;border-radius:4px"><%= l.action %></code></td>
+            <td style="color:#6b7280;font-size:.82rem"><%= l.target_type||'' %><% if(l.target_id){%> #<%= l.target_id %><% } %></td>
+            <td style="font-size:.85rem"><%= l.detail||'-' %></td>
+            <td style="color:#9ca3af;font-size:.78rem"><%= l.ip_address||'-' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+    <div class="adm-pagination" style="margin-top:1rem">
+      <% for (let p = 1; p <= totalPages; p++) { %>
+        <a href="/admin/audit?page=<%= p %>"
+           class="adm-page-btn <%= p === page ? 'active' : '' %>"><%= p %></a>
+      <% } %>
+    </div>
+  <% } %>
+</div>

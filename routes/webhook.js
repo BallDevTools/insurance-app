@@ -36,10 +36,22 @@ module.exports = async function webhookPlugin(fastify, opts) {
 
     const events = req.body?.events || []
 
-    // ประมวลผล events แบบ parallel
-    await Promise.all(events.map(event => handleEvent(event).catch(err => {
-      console.error('[Webhook] Event error:', err.message)
-    })))
+    // ประมวลผล events แบบ sequential (เพื่อความปลอดภัยของ session)
+    for (const event of events) {
+      try {
+        // Idempotency: ตรวจ messageId ซ้ำ
+        if (event.message?.id) {
+          const [existing] = await db.query(
+            'SELECT id FROM line_messages WHERE line_message_id = ? LIMIT 1',
+            [event.message.id]
+          ).catch(() => [[]])
+          if (existing.length > 0) continue  // ข้ามถ้าเคยประมวลผลแล้ว
+        }
+        await handleEvent(event)
+      } catch (err) {
+        console.error('[Webhook] Event error:', err.message)
+      }
+    }
 
     return reply.send({ ok: true })
   })
@@ -62,17 +74,40 @@ async function handleEvent(event) {
   const userId = event.source.userId
   const text = event.message.text.trim()
   const replyToken = event.replyToken
+  const messageId = event.message.id
 
   // โหลด session
   let session = await getOrCreateSession(userId)
 
-  // บันทึก message ที่รับมา
-  await saveMessage(userId, 'in', text)
+  // บันทึก message ที่รับมา (พร้อม messageId สำหรับ idempotency)
+  await saveMessage(userId, 'in', text, 'user', messageId)
+  // แจ้ง notification badge ถ้า handoff หรือ human_first
+  if (session.state === 'handoff' || session.state === 'human_first') {
+    db.query("INSERT INTO notifications (type, ref_id) VALUES ('new_line_message', 0)").catch(() => {})
+  }
+
+  // human_first: เจ้าหน้าที่รับก่อน — bot ไม่ตอบอัตโนมัติ
+  if (session.state === 'human_first') {
+    db.query("INSERT INTO notifications (type, ref_id) VALUES ('new_line_message', 0)").catch(() => {})
+    await replyMessage(replyToken, [
+      textMsg('ขอบคุณที่ติดต่อมาครับ 🙏\nเจ้าหน้าที่กำลังจะดูแลคุณในไม่ช้า\n\nหากต้องการให้ระบบตอบอัตโนมัติ พิมพ์ "bot" ได้เลยครับ')
+    ])
+    return
+  }
 
   // ถ้า user อยู่ใน handoff mode → ไม่ตอบ (ให้ admin ตอบ)
   if (session.state === 'handoff') {
     await replyMessage(replyToken, [
       textMsg('ข้อความของคุณถูกส่งถึงเจ้าหน้าที่แล้วครับ กรุณารอสักครู่ 🙏')
+    ])
+    return
+  }
+
+  // คำสั่ง "bot" — สลับจาก human_first เป็น bot mode
+  if (text.toLowerCase() === 'bot') {
+    await db.query('UPDATE line_sessions SET state = "bot" WHERE line_user_id = ?', [userId])
+    await replyMessage(replyToken, [
+      textMsg('เปิดใช้งานระบบตอบอัตโนมัติแล้วครับ 🤖\nสอบถามข้อมูลประกันได้เลย!')
     ])
     return
   }
@@ -147,7 +182,7 @@ async function getOrCreateSession(userId) {
   // ดึงโปรไฟล์จาก LINE
   const profile = await getUserProfile(userId)
   await db.query(
-    'INSERT INTO line_sessions (line_user_id, display_name, picture_url) VALUES (?, ?, ?)',
+    'INSERT INTO line_sessions (line_user_id, display_name, picture_url, state) VALUES (?, ?, ?, "human_first")',
     [userId, profile?.displayName || 'Unknown', profile?.pictureUrl || null]
   )
   const [newRows] = await db.query('SELECT * FROM line_sessions WHERE line_user_id = ?', [userId])
@@ -165,11 +200,11 @@ async function resetAskCount(userId) {
   await db.query('UPDATE line_sessions SET ask_count = 0 WHERE line_user_id = ?', [userId])
 }
 
-async function saveMessage(userId, direction, message, sentBy = 'bot') {
+async function saveMessage(userId, direction, message, sentBy = 'bot', lineMessageId = null) {
   await db.query(
-    'INSERT INTO line_messages (line_user_id, direction, message, sent_by) VALUES (?, ?, ?, ?)',
-    [userId, direction, message, sentBy]
-  )
+    'INSERT INTO line_messages (line_user_id, direction, message, sent_by, line_message_id) VALUES (?, ?, ?, ?, ?)',
+    [userId, direction, message, sentBy, lineMessageId]
+  ).catch(() => {})
 }
 
 async function getConversationHistory(userId) {

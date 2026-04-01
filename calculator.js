@@ -1,14 +1,12 @@
 'use strict'
 
 // =============================================
-// ตรรกะคำนวณเบี้ยประกันรถยนต์
+// ข้อมูลประเภทประกัน (coverage labels)
 // =============================================
 
 const INSURANCE_TYPES = {
   class1: {
     label: 'ประกันชั้น 1',
-    baseRate: 0.042,        // 4.2% ของมูลค่ารถ
-    minPremium: 12000,
     coverage: {
       ownDamage: true,
       thirdPartyBody: true,
@@ -32,8 +30,6 @@ const INSURANCE_TYPES = {
   },
   class2plus: {
     label: 'ประกันชั้น 2+',
-    baseRate: 0.022,        // 2.2%
-    minPremium: 7000,
     coverage: {
       ownDamage: 'collision',
       thirdPartyBody: true,
@@ -57,8 +53,6 @@ const INSURANCE_TYPES = {
   },
   class3plus: {
     label: 'ประกันชั้น 3+',
-    baseRate: 0.010,        // 1.0%
-    minPremium: 3500,
     coverage: {
       ownDamage: 'collision',
       thirdPartyBody: true,
@@ -82,59 +76,6 @@ const INSURANCE_TYPES = {
   }
 }
 
-// ตัวคูณตามอายุรถ
-function getAgeFactor(year) {
-  const age = new Date().getFullYear() + 543 - year  // แปลง ค.ศ. เป็น พ.ศ.
-  const ageActual = new Date().getFullYear() - year
-  if (ageActual <= 1) return 1.00
-  if (ageActual <= 3) return 0.95
-  if (ageActual <= 5) return 0.88
-  if (ageActual <= 7) return 0.80
-  if (ageActual <= 10) return 0.72
-  return 0.65
-}
-
-// มูลค่ารถตามอายุ (สำหรับรถที่ไม่มีใน DB)
-function estimateCarValue(baseValue, year) {
-  const ageFactor = getAgeFactor(year)
-  return Math.round(baseValue * ageFactor)
-}
-
-function calculatePremium({ carValue, insuranceType, year, provinceFactor = 1.0, settings = {} }) {
-  const config = INSURANCE_TYPES[insuranceType]
-  if (!config) throw new Error('ประเภทประกันไม่ถูกต้อง')
-
-  // ใช้ rate จาก DB settings ถ้ามี
-  const rateKey = `${insuranceType}_rate`
-  const minKey = `${insuranceType}_min`
-  const baseRate = settings[rateKey] || config.baseRate
-  const minPremium = settings[minKey] || config.minPremium
-
-  const ageFactor = getAgeFactor(year)
-  const effectiveValue = carValue * ageFactor
-
-  let premium = effectiveValue * baseRate * provinceFactor
-
-  // ปัดให้ได้ผลลัพธ์ที่สวยงาม
-  premium = Math.max(premium, minPremium)
-  premium = Math.round(premium / 100) * 100
-
-  // ภาษีอากรแสตมป์ 0.4% + ภาษีมูลค่าเพิ่ม 7%
-  const stampDuty = Math.round(premium * 0.004)
-  const vat = Math.round((premium + stampDuty) * 0.07)
-  const total = premium + stampDuty + vat
-
-  return {
-    netPremium: premium,
-    stampDuty,
-    vat,
-    totalPremium: total,
-    effectiveCarValue: Math.round(effectiveValue),
-    ageFactor,
-    config
-  }
-}
-
 function generateQuoteNumber() {
   const now = new Date()
   const dateStr = now.getFullYear().toString().slice(-2)
@@ -144,10 +85,4 @@ function generateQuoteNumber() {
   return `QT${dateStr}${rand}`
 }
 
-module.exports = {
-  INSURANCE_TYPES,
-  calculatePremium,
-  generateQuoteNumber,
-  estimateCarValue,
-  getAgeFactor
-}
+module.exports = { INSURANCE_TYPES, generateQuoteNumber }

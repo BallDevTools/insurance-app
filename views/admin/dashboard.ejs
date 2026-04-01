@@ -1,35 +1,36 @@
-<!-- STAT CARDS -->
+<!-- FUNNEL STATS -->
 <div class="adm-stats">
   <div class="adm-stat adm-stat-blue">
     <div class="adm-stat-icon">📋</div>
     <div>
-      <div class="adm-stat-val"><%= totals.today_quotes || 0 %></div>
-      <div class="adm-stat-lbl">ใบเสนอราคาวันนี้</div>
-      <div class="adm-stat-sub">฿<%= formatNumber(totals.today_premium) %></div>
-    </div>
-  </div>
-  <div class="adm-stat adm-stat-purple">
-    <div class="adm-stat-icon">📅</div>
-    <div>
-      <div class="adm-stat-val"><%= totals.month_quotes || 0 %></div>
-      <div class="adm-stat-lbl">ใบเสนอราคาเดือนนี้</div>
-      <div class="adm-stat-sub">฿<%= formatNumber(totals.month_premium) %></div>
+      <div class="adm-stat-val"><%= totals.today_leads || 0 %></div>
+      <div class="adm-stat-lbl">Leads วันนี้</div>
+      <div class="adm-stat-sub">เดือนนี้ <%= totals.month_leads || 0 %> leads</div>
     </div>
   </div>
   <div class="adm-stat adm-stat-green">
+    <div class="adm-stat-icon">💬</div>
+    <div>
+      <div class="adm-stat-val"><%= totals.total_clicked || 0 %></div>
+      <div class="adm-stat-lbl">คลิก LINE / FB</div>
+      <div class="adm-stat-sub">LINE <%= totals.total_line_clicks||0 %> · FB <%= totals.total_fb_clicks||0 %></div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-purple">
     <div class="adm-stat-icon">✅</div>
     <div>
       <div class="adm-stat-val"><%= totals.contacted_count || 0 %></div>
       <div class="adm-stat-lbl">ติดต่อแล้ว</div>
-      <div class="adm-stat-sub">จาก <%= totals.total_quotes %> ใบ</div>
+      <div class="adm-stat-sub">จาก <%= totals.total_leads || 0 %> leads</div>
     </div>
   </div>
   <div class="adm-stat adm-stat-orange">
     <div class="adm-stat-icon">🏆</div>
     <div>
-      <div class="adm-stat-val"><%= totals.completed_count || 0 %></div>
+      <div class="adm-stat-val"><%= totals.converted_count || 0 %></div>
       <div class="adm-stat-lbl">ปิดงานสำเร็จ</div>
-      <div class="adm-stat-sub">฿<%= formatNumber(totals.total_premium) %> รวม</div>
+      <% const convRate = totals.total_leads > 0 ? Math.round(totals.converted_count/totals.total_leads*100) : 0 %>
+      <div class="adm-stat-sub">Conversion <%= convRate %>%</div>
     </div>
   </div>
 </div>
@@ -38,7 +39,7 @@
 <div class="adm-charts">
   <!-- Daily Bar Chart -->
   <div class="adm-card">
-    <div class="adm-card-title">📊 ใบเสนอราคา 7 วันล่าสุด</div>
+    <div class="adm-card-title">📊 Leads 7 วันล่าสุด</div>
     <div class="adm-bar-chart">
       <% if (!dailyStats.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
       <% const maxCnt = Math.max(...dailyStats.map(d=>d.cnt), 1) %>
@@ -126,19 +127,26 @@
   <div class="adm-table-wrap">
     <table class="adm-table">
       <thead><tr>
-        <th>เลขที่</th><th>ลูกค้า</th><th>เบอร์</th><th>รถ</th><th>ประกัน</th><th>เบี้ย</th><th>สถานะ</th><th>วันที่</th>
+        <th>รถ</th><th>ประกัน</th><th>ราคา</th><th>ลูกค้า</th><th>CTA</th><th>แหล่ง</th><th>สถานะ</th><th>วันที่</th>
       </tr></thead>
       <tbody>
         <% if (!recentLeads.length) { %><tr><td colspan="8" class="adm-empty-cell">ยังไม่มี leads</td></tr><% } %>
         <% recentLeads.forEach(l=>{ %>
           <tr>
-            <td><a href="/admin/quotes/<%= l.quote_id %>" class="adm-qnum"><%= l.quote_number %></a></td>
-            <td><div class="adm-name"><%= l.full_name %></div><div class="adm-sub"><%= l.email||'' %></div></td>
-            <td><a href="tel:<%= l.phone %>" class="adm-phone"><%= l.phone %></a></td>
-            <td><div><%= l.car_brand %> <%= l.car_model %></div><div class="adm-sub">ปี <%= l.car_year %></div></td>
+            <td><div class="adm-name"><%= l.brand %> <%= l.model %></div><div class="adm-sub">ปี <%= l.year %></div></td>
             <td><span class="adm-type-pill adm-type-<%= l.insurance_type %>"><%= TYPE_MAP[l.insurance_type] %></span></td>
-            <td class="adm-money">฿<%= formatNumber(l.premium_amount) %></td>
-            <td><span class="adm-status adm-status-<%= l.status %>"><%= STATUS_MAP[l.status] %></span></td>
+            <td class="adm-money"><% if(l.best_price){ %>฿<%= formatNumber(l.best_price) %><% }else{ %>-<% } %></td>
+            <td>
+              <% if(l.name){ %><div class="adm-name"><%= l.name %></div><% } %>
+              <% if(l.phone){ %><div class="adm-sub"><%= l.phone %></div><% } %>
+              <% if(!l.name && !l.phone){ %><div class="adm-sub">ไม่ระบุ</div><% } %>
+            </td>
+            <td>
+              <% if(l.clicked_line){ %><span class="adm-click-badge adm-click-line">LINE ✓</span> <% } %>
+              <% if(l.clicked_facebook){ %><span class="adm-click-badge adm-click-fb">FB ✓</span><% } %>
+            </td>
+            <td class="adm-sub"><%= SOURCE_MAP[l.source]||l.source %></td>
+            <td><span class="adm-status adm-status-<%= l.status %>"><%= LEAD_STATUS_MAP[l.status]||l.status %></span></td>
             <td class="adm-dt"><%= new Date(l.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) %></td>
           </tr>
         <% }) %>

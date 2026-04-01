@@ -12,12 +12,12 @@ if (brandSelect && modelSelect) {
   brandSelect.addEventListener('change', async function () {
     const brandId = this.value
     const brandName = this.options[this.selectedIndex]?.text || ''
-    brandHidden.value = brandName
+    if (brandHidden) brandHidden.value = brandName
 
     // reset model
     modelSelect.innerHTML = '<option value="">-- กำลังโหลด... --</option>'
     modelSelect.disabled = true
-    modelHidden.value = ''
+    if (modelHidden) modelHidden.value = ''
 
     if (!brandId) {
       modelSelect.innerHTML = '<option value="">-- เลือกรุ่นรถ --</option>'
@@ -33,9 +33,16 @@ if (brandSelect && modelSelect) {
         const opt = document.createElement('option')
         opt.value = m.id
         opt.textContent = m.name
-        opt.dataset.value = m.base_value
         modelSelect.appendChild(opt)
       })
+      // re-select ถ้ามีค่าเดิม (กรณี validation error หรือ compare page)
+      const defaultId = modelSelect.dataset.defaultModelId
+      if (defaultId) {
+        modelSelect.value = defaultId
+        if (modelSelect.value && modelHidden) {
+          modelHidden.value = modelSelect.options[modelSelect.selectedIndex]?.text || ''
+        }
+      }
       modelSelect.disabled = false
     } catch (e) {
       modelSelect.innerHTML = '<option value="">-- เลือกรุ่นรถ (โหลดไม่ได้) --</option>'
@@ -45,10 +52,10 @@ if (brandSelect && modelSelect) {
 
   modelSelect.addEventListener('change', function () {
     const opt = this.options[this.selectedIndex]
-    modelHidden.value = opt?.text || ''
+    if (modelHidden) modelHidden.value = opt?.text || ''
   })
 
-  // Trigger ถ้ามีค่าอยู่แล้ว (กรณี validation error กลับมา)
+  // Trigger ถ้ามีค่าอยู่แล้ว (กรณี validation error กลับมา หรือ compare page)
   if (brandSelect.value) {
     brandSelect.dispatchEvent(new Event('change'))
   }
@@ -73,7 +80,6 @@ const carForm = document.getElementById('carForm')
 const submitBtn = document.getElementById('submitBtn')
 if (carForm && submitBtn) {
   carForm.addEventListener('submit', function (e) {
-    // Basic client-side check
     const brand = document.getElementById('car_brand_id')?.value
     const model = document.getElementById('car_model_id')?.value
     const year = document.getElementById('car_year')?.value
@@ -82,7 +88,7 @@ if (carForm && submitBtn) {
     const insType = document.querySelector('input[name="insurance_type"]:checked')
 
     if (!brand || !model || !year || !plate || !prov || !insType) {
-      return // ให้ server validate แทน
+      return
     }
     submitBtn.classList.add('btn-loading')
     submitBtn.disabled = true
@@ -109,4 +115,42 @@ if (phoneInput) {
   phoneInput.addEventListener('input', function () {
     this.value = this.value.replace(/[^0-9\s\-]/g, '')
   })
+}
+
+// =============================================
+// Upload Documents
+// =============================================
+async function uploadDocs(quoteNumber) {
+  const reg = document.getElementById('doc_registration')
+  const id  = document.getElementById('doc_id_card')
+  const msg = document.getElementById('upload-msg')
+  if (!reg || !id) return
+
+  const form = new FormData()
+  if (reg.files[0]) form.append('registration', reg.files[0])
+  if (id.files[0])  form.append('id_card', id.files[0])
+  if (!reg.files[0] && !id.files[0]) {
+    msg.textContent = 'กรุณาเลือกไฟล์ก่อน'
+    msg.className = 'upload-msg err'
+    return
+  }
+
+  msg.textContent = 'กำลังอัปโหลด...'
+  msg.className = 'upload-msg'
+  try {
+    const res = await fetch(`/upload/${quoteNumber}`, { method: 'POST', body: form })
+    const data = await res.json()
+    if (data.ok) {
+      msg.textContent = `✓ อัปโหลดสำเร็จ ${data.files.length} ไฟล์`
+      msg.className = 'upload-msg ok'
+      reg.value = ''
+      id.value = ''
+    } else {
+      msg.textContent = 'อัปโหลดไม่สำเร็จ: ' + (data.message || 'unknown error')
+      msg.className = 'upload-msg err'
+    }
+  } catch {
+    msg.textContent = 'เกิดข้อผิดพลาด กรุณาลองใหม่'
+    msg.className = 'upload-msg err'
+  }
 }

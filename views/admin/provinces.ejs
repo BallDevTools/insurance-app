@@ -3,6 +3,7 @@
 <div class="adm-card" style="max-width:700px">
   <div class="adm-card-title">📍 เพิ่มจังหวัดใหม่</div>
   <form action="/admin/provinces/add" method="POST" class="adm-inline-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="text" name="name" placeholder="ชื่อจังหวัด" required>
     <input type="number" name="risk_factor" placeholder="Risk Factor (เช่น 1.15)" step="0.01" min="1" max="2" required>
     <button type="submit" class="adm-btn adm-btn-primary">+ เพิ่ม</button>
@@ -23,6 +24,7 @@
             <td><%= p.name %></td>
             <td>
               <form action="/admin/provinces/<%= p.id %>/edit" method="POST" class="adm-inline-edit">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="hidden" name="name" value="<%= p.name %>">
                 <input type="number" name="risk_factor" value="<%= p.risk_factor %>" step="0.01" min="1" max="2" style="width:80px">
                 <button type="submit" class="adm-link-sm">บันทึก</button>
@@ -38,6 +40,7 @@
             </td>
             <td>
               <form action="/admin/provinces/<%= p.id %>/edit" method="POST" class="adm-inline-edit">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="hidden" name="risk_factor" value="<%= p.risk_factor %>">
                 <input type="text" name="name" value="<%= p.name %>" style="width:120px">
                 <button type="submit" class="adm-link-sm">เปลี่ยนชื่อ</button>
@@ -46,6 +49,7 @@
             <td>
               <form action="/admin/provinces/<%= p.id %>/delete" method="POST"
                     onsubmit="return confirm('ลบ <%= p.name %>?')">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button type="submit" class="adm-btn-del">ลบ</button>
               </form>
             </td>

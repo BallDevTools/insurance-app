@@ -1,0 +1,163 @@
+<!-- Compare Page -->
+<section class="compare-section">
+  <div class="container">
+    <div class="compare-hero">
+      <h1>เปรียบเทียบประกันรถยนต์</h1>
+      <p>เลือกรุ่นรถและปีผลิต เพื่อดูราคาจริงจากบริษัทประกันทั้ง 3 ประเภท</p>
+    </div>
+
+    <!-- Filter Form -->
+    <form action="/compare" method="GET" class="compare-form card-shadow">
+      <div class="compare-form-grid">
+        <div class="form-group">
+          <label>ยี่ห้อรถ</label>
+          <div class="select-wrapper">
+            <select id="car_brand_id" name="brand_id" required>
+              <option value="">-- เลือกยี่ห้อ --</option>
+              <% brands.forEach(b => { %>
+                <option value="<%= b.id %>" <%= String(selected.brand_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>รุ่นรถ</label>
+          <div class="select-wrapper">
+            <select id="car_model_id" name="model_id" required data-default-model-id="<%= selected.model_id || '' %>">
+              <option value="">-- เลือกรุ่นรถ --</option>
+              <% if (models && models.length > 0) { %>
+                <% models.forEach(m => { %>
+                  <option value="<%= m.id %>" <%= String(selected.model_id) === String(m.id) ? 'selected' : '' %>><%= m.name %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>ปีผลิต</label>
+          <div class="select-wrapper">
+            <select name="year" required>
+              <option value="">เลือกปี</option>
+              <% years.forEach(y => { %>
+                <option value="<%= y %>" <%= String(selected.year) === String(y) ? 'selected' : '' %>><%= y %> (พ.ศ. <%= y + 543 %>)</option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>จังหวัดที่จดทะเบียน</label>
+          <div class="select-wrapper">
+            <select name="province" required>
+              <option value="">เลือกจังหวัด</option>
+              <% provinces.forEach(p => { %>
+                <option value="<%= p.name %>" <%= selected.province === p.name ? 'selected' : '' %>><%= p.name %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <div class="form-group form-group-action" style="grid-column: span 2;">
+          <button type="submit" class="btn btn-primary btn-full">เปรียบเทียบราคา →</button>
+        </div>
+      </div>
+    </form>
+
+    <% if (comparisons && selectedModel) { %>
+    <!-- Comparison Table -->
+    <div class="compare-info-bar">
+      <strong><%= selectedModel.brand_name %> <%= selectedModel.model_name %></strong>
+      &nbsp;|&nbsp; ปี <%= selected.year %> (พ.ศ. <%= parseInt(selected.year) + 543 %>)
+    </div>
+    <div class="compare-grid">
+
+      <% const types = ['class1','class2plus','class3plus'] %>
+      <% const typeColors = { class1:'#1a56db', class2plus:'#7c3aed', class3plus:'#059669' } %>
+      <% const typeLabels = { class1:'ประกันชั้น 1', class2plus:'ประกันชั้น 2+', class3plus:'ประกันชั้น 3+' } %>
+
+      <% types.forEach(type => { %>
+        <% const pkgs = comparisons[type] %>
+        <% const cfg = INSURANCE_TYPES[type] %>
+        <% const minPkg = pkgs.length > 0 ? pkgs[0] : null %>
+        <% const minPrice = minPkg ? parseFloat(minPkg.premium_discounted || minPkg.premium_amount) : null %>
+        <div class="compare-card <%= type===types[0]?'compare-card-featured':'' %>">
+          <% if (type === types[0]) { %><div class="compare-badge-top">คุ้มครองสูงสุด</div><% } %>
+          <div class="compare-card-header" style="background:<%= typeColors[type] %>">
+            <div class="compare-type-label"><%= typeLabels[type] %></div>
+            <% if (minPrice) { %>
+              <div class="compare-price">฿<%= formatNumber(minPrice) %></div>
+              <div class="compare-price-sub">ราคาเริ่มต้น / ปี</div>
+            <% } else { %>
+              <div class="compare-price" style="font-size:1.1rem">ไม่มีข้อมูล</div>
+              <div class="compare-price-sub">ติดต่อเพื่อรับราคา</div>
+            <% } %>
+          </div>
+          <div class="compare-card-body">
+
+            <% if (pkgs.length > 0) { %>
+            <div class="compare-packages">
+              <div class="compare-packages-title">บริษัทที่มีข้อมูล (<%= pkgs.length %> บริษัท)</div>
+              <% pkgs.slice(0, 5).forEach(function(pkg, pi) { %>
+                <div class="compare-pkg-row">
+                  <span class="compare-pkg-name"><%= pi === 0 ? '⭐ ' : '' %><%= pkg.company_name %></span>
+                  <span class="compare-pkg-price">฿<%= formatNumber(pkg.premium_discounted || pkg.premium_amount) %></span>
+                </div>
+              <% }) %>
+              <% if (pkgs.length > 5) { %>
+                <div class="compare-pkg-more">และอีก <%= pkgs.length - 5 %> บริษัท</div>
+              <% } %>
+            </div>
+            <% } else { %>
+            <div class="compare-no-data">ยังไม่มีข้อมูลราคา</div>
+            <% } %>
+
+            <div class="compare-coverage-title">ความคุ้มครอง</div>
+            <ul class="compare-coverage-list">
+              <% const coverageLabels = {
+                ownDamage:'ความเสียหายตัวรถ',
+                thirdPartyBody:'บุคคลภายนอก (ร่างกาย)',
+                thirdPartyProperty:'บุคคลภายนอก (ทรัพย์สิน)',
+                theft:'สูญหาย/ไฟไหม้',
+                flood:'น้ำท่วม',
+                personalAccident:'อุบัติเหตุส่วนบุคคล',
+                medicalExpense:'ค่ารักษาพยาบาล'
+              } %>
+              <% Object.entries(cfg.coverage).forEach(([key, val]) => { %>
+                <% if (coverageLabels[key]) { %>
+                <li class="<%= val===false?'no-cover':'' %>">
+                  <span><%= val===false ? '✗' : '✓' %></span>
+                  <span><%= coverageLabels[key] %></span>
+                </li>
+                <% } %>
+              <% }) %>
+            </ul>
+
+            <% if (pkgs.length > 0) { %>
+            <a href="#"
+               onclick="event.preventDefault(); document.getElementById('quoteForm_<%= type %>').submit()"
+               class="btn btn-primary btn-full" style="background:<%= typeColors[type] %>">
+              ขอใบเสนอราคา →
+            </a>
+            <% } else { %>
+            <a href="/" class="btn btn-outline btn-full">กรอกข้อมูล →</a>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <!-- Hidden quote forms -->
+    <% types.forEach(type => { %>
+      <form id="quoteForm_<%= type %>" action="/quote" method="POST" style="display:none">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="car_brand" value="<%= selectedModel.brand_name %>">
+        <input type="hidden" name="car_model" value="<%= selectedModel.model_name %>">
+        <input type="hidden" name="car_model_id" value="<%= selectedModel.id %>">
+        <input type="hidden" name="car_year" value="<%= selected.year %>">
+        <input type="hidden" name="license_plate" value="กข 0000">
+        <input type="hidden" name="province" value="<%= selected.province || 'กรุงเทพมหานคร' %>">
+        <input type="hidden" name="insurance_type" value="<%= type %>">
+      </form>
+    <% }) %>
+    <% } %>
+
+  </div>
+</section>

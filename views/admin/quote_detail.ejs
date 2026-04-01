@@ -28,6 +28,7 @@
     <div class="adm-card">
       <div class="adm-card-title">📌 สถานะ</div>
       <form action="/admin/quotes/<%= quote.id %>/status" method="POST" class="adm-status-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <select name="status" class="adm-status-select">
           <option value="pending"   <%= quote.status==='pending'?'selected':'' %>>⏳ รอติดต่อ</option>
           <option value="contacted" <%= quote.status==='contacted'?'selected':'' %>>📞 ติดต่อแล้ว</option>
@@ -38,8 +39,9 @@
       </form>
     </div>
 
-    <div class="adm-back-link">
+    <div class="adm-back-link" style="display:flex;gap:.5rem;flex-wrap:wrap">
       <a href="/admin/quotes" class="adm-btn adm-btn-ghost">← กลับรายการ</a>
+      <a href="/admin/quotes/<%= quote.id %>/pdf" target="_blank" class="adm-btn adm-btn-primary">⬇ ดาวน์โหลด PDF</a>
     </div>
   </div>
 
@@ -79,6 +81,7 @@
       <% } %>
 
       <form action="/admin/leads/<%= lead.id %>/note" method="POST" class="adm-note-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <textarea name="note" rows="3" placeholder="พิมพ์บันทึกการติดต่อ..." required></textarea>
         <button type="submit" class="adm-btn adm-btn-primary">บันทึก</button>
       </form>

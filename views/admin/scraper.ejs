@@ -1,0 +1,186 @@
+<div class="page-header">
+  <h1>Scraper Dashboard</h1>
+  <p class="text-muted">ดึงข้อมูลประกันจาก insure.724.co.th</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.5rem">
+  <div class="stat-card">
+    <div class="stat-number"><%= stats.counts.brands || 0 %></div>
+    <div class="stat-label">ยี่ห้อรถ</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number"><%= stats.counts.models || 0 %></div>
+    <div class="stat-label">รุ่นรถ</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number"><%= stats.counts.packages || 0 %></div>
+    <div class="stat-label">แพ็กเกจประกัน</div>
+  </div>
+</div>
+
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:2rem">
+  <div class="stat-card" style="border-left:4px solid #10b981">
+    <div class="stat-number" style="color:#10b981"><%= stats.counts.done || 0 %></div>
+    <div class="stat-label">รายการที่ done</div>
+  </div>
+  <div class="stat-card" style="border-left:4px solid #f59e0b">
+    <div class="stat-number" style="color:#f59e0b"><%= stats.counts.pending || 0 %></div>
+    <div class="stat-label">รายการ pending</div>
+  </div>
+  <div class="stat-card" style="border-left:4px solid #ef4444">
+    <div class="stat-number" style="color:#ef4444"><%= stats.counts.errors || 0 %></div>
+    <div class="stat-label">รายการ error</div>
+  </div>
+</div>
+
+<!-- Control Panel -->
+<div class="card" style="margin-bottom:1.5rem">
+  <div class="card-header">
+    <h2 class="card-title">ควบคุม Scraper</h2>
+    <span id="status-badge" class="badge <%= running ? 'badge-success' : 'badge-secondary' %>">
+      <%= running ? '● กำลังรัน' : '○ หยุด' %>
+    </span>
+  </div>
+  <div class="card-body" style="display:flex;gap:1rem;flex-wrap:wrap">
+    <button id="btn-start" class="btn btn-primary" <%= running ? 'disabled' : '' %> onclick="scraperStart()">
+      ▶ เริ่ม Scrape
+    </button>
+    <button id="btn-stop" class="btn btn-danger" onclick="scraperStop()">
+      ■ หยุด
+    </button>
+    <button id="btn-reset" class="btn btn-secondary" <%= running ? 'disabled' : '' %>
+      onclick="if(confirm('Reset progress ทั้งหมด? scrape ครั้งหน้าจะรัน full scan')) scraperReset()">
+      ↺ Reset Progress
+    </button>
+    <span style="color:#6b7280;font-size:.85rem;align-self:center">
+      Cron: ทุกคืน 02:00 น. (auto)
+    </span>
+  </div>
+</div>
+
+<!-- Live Log -->
+<div class="card" style="margin-bottom:1.5rem">
+  <div class="card-header">
+    <h2 class="card-title">Live Log</h2>
+    <label style="font-size:.85rem;color:#6b7280">
+      <input type="checkbox" id="auto-scroll" checked> Auto scroll
+    </label>
+  </div>
+  <div id="log-box" style="
+    background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:.8rem;
+    padding:1rem;height:300px;overflow-y:auto;border-radius:0 0 8px 8px;line-height:1.6
+  ">
+    <% logs.forEach(line => { %>
+      <div><%= line %></div>
+    <% }) %>
+    <% if (logs.length === 0) { %>
+      <div style="color:#64748b">ยังไม่มี log — กด "เริ่ม Scrape" เพื่อเริ่มต้น</div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Run History -->
+<div class="card">
+  <div class="card-header"><h2 class="card-title">ประวัติการรัน</h2></div>
+  <div class="card-body" style="padding:0">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>ประเภท</th>
+          <th>เริ่ม</th>
+          <th>สิ้นสุด</th>
+          <th>Scraped</th>
+          <th>Errors</th>
+          <th>สถานะ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% (stats.logs || []).forEach(log => { %>
+          <tr>
+            <td><%= log.id %></td>
+            <td><%= log.run_type %></td>
+            <td><%= log.started_at ? new Date(log.started_at).toLocaleString('th-TH') : '-' %></td>
+            <td><%= log.finished_at ? new Date(log.finished_at).toLocaleString('th-TH') : '-' %></td>
+            <td><%= log.total_scraped %></td>
+            <td><%= log.total_errors %></td>
+            <td>
+              <span class="badge badge-<%= log.status === 'done' ? 'success' : log.status === 'running' ? 'warning' : log.status === 'stopped' ? 'secondary' : 'danger' %>">
+                <%= log.status %>
+              </span>
+            </td>
+          </tr>
+        <% }) %>
+        <% if (!stats.logs || stats.logs.length === 0) { %>
+          <tr><td colspan="7" style="text-align:center;color:#9ca3af">ยังไม่มีประวัติ</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const csrfToken = '<%= csrfToken %>'
+let pollInterval = null
+
+async function apiPost(path) {
+  const res = await fetch('/admin/scraper' + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: '_csrf=' + encodeURIComponent(csrfToken)
+  })
+  return res.json()
+}
+
+async function scraperStart() {
+  document.getElementById('btn-start').disabled = true
+  const r = await apiPost('/start')
+  alert(r.message)
+  startPolling()
+}
+
+async function scraperStop() {
+  const r = await apiPost('/stop')
+  alert(r.message)
+}
+
+async function scraperReset() {
+  const r = await apiPost('/reset-progress')
+  alert(r.message)
+}
+
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval)
+  pollInterval = setInterval(async () => {
+    const res = await fetch('/admin/scraper/status').then(r => r.json())
+
+    // update badge
+    const badge = document.getElementById('status-badge')
+    badge.textContent = res.running ? '● กำลังรัน' : '○ หยุด'
+    badge.className = 'badge ' + (res.running ? 'badge-success' : 'badge-secondary')
+
+    // update buttons
+    document.getElementById('btn-start').disabled = res.running
+    document.getElementById('btn-stop').disabled = !res.running
+    document.getElementById('btn-reset').disabled = res.running
+
+    // update log
+    const box = document.getElementById('log-box')
+    box.innerHTML = res.logs.map(l => `<div>${l}</div>`).join('') || '<div style="color:#64748b">ยังไม่มี log</div>'
+    if (document.getElementById('auto-scroll').checked) {
+      box.scrollTop = box.scrollHeight
+    }
+
+    if (!res.running) {
+      clearInterval(pollInterval)
+      pollInterval = null
+    }
+  }, 3000)
+}
+
+// เริ่ม poll ทันทีถ้ากำลังรันอยู่
+<% if (running) { %>
+startPolling()
+<% } %>
+</script>

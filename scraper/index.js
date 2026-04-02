@@ -83,12 +83,60 @@ async function processModel({ brandDbId, brand, model, runType, signal, onProgre
 }
 
 /**
+ * รันเฉพาะรายการที่ error
+ */
+async function runErrorsOnly({ signal, onProgress, counters }) {
+  const errors = await scraperDb.getErrors()
+  if (errors.length === 0) {
+    onProgress('[Scraper] ไม่พบรายการที่ error')
+    return
+  }
+
+  onProgress(`[Scraper] กำลังดึงข้อมูลซ้ำสำหรับ ${errors.length} รายการที่ผิดพลาด...`)
+
+  const { fetchTable } = require('./fetchTable')
+  const { REQUEST_DELAY } = require('./config')
+
+  // ใช้ concurrency สำหรับการรัน error ด้วย
+  const tasks = errors.map(err => async () => {
+    if (signal.aborted) return
+
+    try {
+      await sleep(REQUEST_DELAY)
+      const { tableUrl, packages } = await fetchTable(err.model_id_724, err.car_year, signal)
+
+      if (!tableUrl) {
+        await scraperDb.setProgress(err.model_id_724, err.car_year, 'done')
+        return
+      }
+
+      const saved = await scraperDb.savePackages(err.model_db_id, err.car_year, packages)
+      await scraperDb.setProgress(err.model_id_724, err.car_year, 'done')
+      counters.scraped += saved
+
+      if (saved > 0) {
+        onProgress(`[Scraper]   ✓ ${err.brand_name} ${err.model_name} ${err.car_year} — ${saved} packages (Retry)`)
+      }
+    } catch (e) {
+      if (signal.aborted) return
+      counters.errors++
+      await scraperDb.setProgress(err.model_id_724, err.car_year, 'error', e.message)
+      onProgress(`[Scraper]   ✗ ${err.model_name} ${err.car_year}: ${e.message} (Retry)`)
+      await sleep(REQUEST_DELAY * 2)
+    }
+  })
+
+  await pLimit(tasks, CONCURRENCY)
+}
+
+/**
  * Main entry point
  * @param {object} opts
- * @param {string} opts.runType  'manual' | 'scheduled'
+ * @param {string} opts.runType  'manual' | 'scheduled' | 'retry-errors'
+ * @param {boolean} opts.errorsOnly  รันเฉพาะที่ error
  * @param {function} opts.onProgress  callback(msg) สำหรับ log realtime
  */
-async function run({ runType = 'scheduled', onProgress = console.log } = {}) {
+async function run({ runType = 'scheduled', errorsOnly = false, onProgress = console.log } = {}) {
   if (_running) {
     onProgress('[Scraper] กำลังรันอยู่แล้ว')
     return
@@ -104,10 +152,13 @@ async function run({ runType = 'scheduled', onProgress = console.log } = {}) {
   onProgress(`[Scraper] เริ่มต้น (${runType}) — log #${logId} — concurrency: ${CONCURRENCY}`)
 
   try {
-    for (const brand of BRANDS) {
-      if (signal.aborted) break
+    if (errorsOnly) {
+      await runErrorsOnly({ signal, onProgress, counters })
+    } else {
+      for (const brand of BRANDS) {
+        if (signal.aborted) break
 
-      onProgress(`[Scraper] → Brand: ${brand.name} (${brand.id})`)
+        onProgress(`[Scraper] → Brand: ${brand.name} (${brand.id})`)
 
       let brandDbId
       try {
@@ -133,7 +184,8 @@ async function run({ runType = 'scheduled', onProgress = console.log } = {}) {
       )
       await pLimit(tasks, CONCURRENCY)
     }
-  } catch (fatalErr) {
+  }
+} catch (fatalErr) {
     onProgress(`[Scraper] FATAL: ${fatalErr.message}`)
     await scraperDb.updateLog(logId, {
       finished_at: new Date(),

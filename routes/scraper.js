@@ -71,6 +71,26 @@ module.exports = async function scraperPlugin(fastify, opts) {
   })
 
   // ============================================================
+  // POST /admin/scraper/retry-errors — รันเฉพาะรายการที่ error
+  // ============================================================
+  fastify.post('/retry-errors', async (req, reply) => {
+    if (scraper.isRunning()) {
+      return reply.send({ ok: false, message: 'กำลังรันอยู่แล้ว' })
+    }
+
+    logBuffer.length = 0
+    pushLog('Admin สั่ง Retry รายการที่ error...')
+
+    scraper.run({
+      runType: 'retry-errors',
+      errorsOnly: true,
+      onProgress: pushLog
+    }).catch(err => pushLog(`FATAL: ${err.message}`))
+
+    return reply.send({ ok: true, message: 'เริ่มต้น Retry แล้ว' })
+  })
+
+  // ============================================================
   // POST /admin/scraper/stop — หยุด scrape
   // ============================================================
   fastify.post('/stop', async (req, reply) => {

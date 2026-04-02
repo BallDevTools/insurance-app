@@ -2466,6 +2466,12 @@ body.public-site .public-main {
   padding-bottom: 4rem;
 }
 
+body.public-site .container {
+  max-width: 1320px;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
 body.public-site .public-nav-wrap {
   position: sticky;
   top: 0;
@@ -2513,6 +2519,7 @@ body.public-site .public-brand-copy strong {
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--front-primary);
+  line-height: 1.2;
 }
 
 body.public-site .public-brand-copy small {
@@ -2557,18 +2564,29 @@ body.public-site .front-hero-grid {
   align-items: start;
 }
 
+body.public-site .front-hero-grid > *,
+body.public-site .front-result-grid-v2 > *,
+body.public-site .front-compare-grid-v2 > *,
+body.public-site .front-summary-card > *,
+body.public-site .front-summary-card-compare > *,
+body.public-site .public-footer-grid > * {
+  min-width: 0;
+}
+
 body.public-site .front-hero-copy h1,
 body.public-site .front-page-head h1,
 body.public-site .front-section-head h2 {
   font-family: 'Manrope', 'Sarabun', sans-serif;
   letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 body.public-site .front-hero-copy h1 {
   font-size: clamp(2.6rem, 6vw, 4.9rem);
-  line-height: .97;
+  line-height: 1.14;
   color: var(--front-text);
   margin: 1rem 0 1rem;
+  max-width: 11ch;
 }
 
 body.public-site .front-hero-copy p,
@@ -2650,6 +2668,7 @@ body.public-site .front-form-card-wrap {
 
 body.public-site .front-form-card-head h2 {
   font-size: 2rem;
+  line-height: 1.2;
   margin: .85rem 0 .35rem;
 }
 
@@ -2694,6 +2713,7 @@ body.public-site .front-contact-card-v2 h2,
 body.public-site .front-empty-card h2,
 body.public-site .front-note-card strong {
   color: var(--front-text);
+  line-height: 1.25;
 }
 
 body.public-site .front-plan-grid {
@@ -2906,6 +2926,7 @@ body.public-site .front-back-link {
 
 body.public-site .front-page-head h1 {
   font-size: clamp(2.1rem, 5vw, 3.7rem);
+  line-height: 1.16;
   margin-bottom: .7rem;
 }
 
@@ -2936,6 +2957,7 @@ body.public-site .front-summary-item small {
 
 body.public-site .front-summary-item strong {
   font-size: 1.05rem;
+  line-height: 1.3;
 }
 
 body.public-site .front-result-grid-v2 {
@@ -2971,6 +2993,7 @@ body.public-site .front-package-top-v2 {
 
 body.public-site .front-package-top-v2 h3 {
   font-size: 1.25rem;
+  line-height: 1.25;
   margin: .55rem 0 .2rem;
 }
 
@@ -2990,7 +3013,7 @@ body.public-site .front-compare-card-head-v2 strong {
   display: block;
   font-family: 'Manrope', 'Sarabun', sans-serif;
   font-size: 2.25rem;
-  line-height: 1;
+  line-height: 1.08;
   color: var(--front-primary);
 }
 
@@ -3142,20 +3165,39 @@ body.public-site .public-footer-bottom {
 }
 
 @media (max-width: 1100px) {
-  body.public-site .front-hero-grid,
-  body.public-site .front-result-grid-v2,
-  body.public-site .front-compare-grid-v2,
   body.public-site .front-benefit-grid,
   body.public-site .public-footer-grid,
   body.public-site .front-form-grid,
-  body.public-site .front-plan-grid,
   body.public-site .front-summary-card,
   body.public-site .front-summary-card-compare {
     grid-template-columns: 1fr 1fr;
   }
 
+  body.public-site .front-hero-grid,
+  body.public-site .front-result-grid-v2 {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  body.public-site .front-compare-grid-v2,
+  body.public-site .front-plan-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   body.public-site .front-contact-card-v2 {
     position: static;
+  }
+
+body.public-site .front-hero-copy h1 {
+    font-size: clamp(2.35rem, 5vw, 4.1rem);
+    line-height: 1.12;
+    max-width: 12ch;
+  }
+
+  body.public-site .front-page-head h1,
+  body.public-site .front-section-head h2,
+  body.public-site .front-form-card-head h2 {
+    line-height: 1.18;
   }
 }
 
@@ -3173,8 +3215,29 @@ body.public-site .public-footer-bottom {
     flex-wrap: wrap;
   }
 
+  body.public-site .public-nav-actions {
+    margin-left: auto;
+  }
+
   body.public-site .front-hero {
     padding-top: 3rem;
+  }
+
+  body.public-site .front-hero-copy h1 {
+    font-size: clamp(2.1rem, 7vw, 3.35rem);
+    line-height: 1.16;
+    max-width: 13ch;
+  }
+
+  body.public-site .front-page-head h1 {
+    font-size: clamp(1.95rem, 6vw, 3rem);
+    line-height: 1.18;
+  }
+
+  body.public-site .front-section-head h2,
+  body.public-site .front-form-card-head h2 {
+    font-size: clamp(1.6rem, 4.8vw, 2.35rem);
+    line-height: 1.22;
   }
 
   body.public-site .front-hero-grid,
@@ -3191,6 +3254,49 @@ body.public-site .public-footer-bottom {
 }
 
 @media (max-width: 640px) {
+  body.public-site .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  body.public-site .front-hero {
+    padding-top: 2rem;
+    padding-bottom: 1.8rem;
+  }
+
+  body.public-site .front-hero-copy h1 {
+    font-size: 2rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    max-width: none;
+  }
+
+  body.public-site .front-hero-copy p,
+  body.public-site .front-page-sub {
+    font-size: .98rem;
+    line-height: 1.7;
+  }
+
+  body.public-site .front-page-head h1 {
+    font-size: 1.8rem;
+    line-height: 1.22;
+  }
+
+  body.public-site .front-section-head h2,
+  body.public-site .front-form-card-head h2,
+  body.public-site .front-contact-card-v2 h2,
+  body.public-site .front-empty-card h2 {
+    font-size: 1.45rem;
+    line-height: 1.24;
+  }
+
+  body.public-site .front-package-price-v2 strong,
+  body.public-site .front-price-highlight strong,
+  body.public-site .front-compare-card-head-v2 strong {
+    font-size: 1.9rem;
+    line-height: 1.1;
+  }
+
   body.public-site .front-form-card-wrap,
   body.public-site .front-contact-card-v2,
   body.public-site .front-empty-card,
@@ -3208,6 +3314,25 @@ body.public-site .public-footer-bottom {
   body.public-site .front-error-actions,
   body.public-site .front-package-top-v2 {
     flex-direction: column;
+  }
+
+  body.public-site .front-primary-btn,
+  body.public-site .front-secondary-btn,
+  body.public-site .front-line-btn,
+  body.public-site .front-facebook-btn,
+  body.public-site .front-btn-block,
+  body.public-site .public-nav-line {
+    width: 100%;
+  }
+
+  body.public-site .public-nav-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body.public-site .public-nav-phone {
+    text-align: center;
   }
 
   body.public-site .front-package-price-v2 {

@@ -111,4 +111,19 @@ async function getStats() {
   return { counts, logs }
 }
 
-module.exports = { saveBrand, saveModel, savePackages, setProgress, isDone, getDoneYears, createLog, updateLog, getStats }
+async function getErrors() {
+  const [rows] = await db.query(
+    `SELECT sp.model_id_724, sp.car_year, sm.id as model_db_id, sm.brand_id as brand_db_id, sb.name as brand_name, sm.name as model_name
+     FROM scraper_progress sp
+     JOIN scraped_models sm ON sp.model_id_724 = sm.model_id_724
+     JOIN scraped_brands sb ON sm.brand_id = sb.id
+     WHERE sp.status = 'error'`
+  )
+  return rows
+}
+
+async function clearErrors() {
+  await db.query(`DELETE FROM scraper_progress WHERE status = 'error'`)
+}
+
+module.exports = { saveBrand, saveModel, savePackages, setProgress, isDone, getDoneYears, createLog, updateLog, getStats, getErrors, clearErrors }

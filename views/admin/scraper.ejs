@@ -46,6 +46,9 @@
     <button id="btn-start" class="btn btn-primary" <%= running ? 'disabled' : '' %> onclick="scraperStart()">
       ▶ เริ่ม Scrape
     </button>
+    <button id="btn-retry" class="btn btn-warning" <%= (running || stats.counts.errors == 0) ? 'disabled' : '' %> onclick="scraperRetry()">
+      ↻ Retry เฉพาะที่ Error (<%= stats.counts.errors || 0 %>)
+    </button>
     <button id="btn-stop" class="btn btn-danger" onclick="scraperStop()">
       ■ หยุด
     </button>
@@ -140,6 +143,13 @@ async function scraperStart() {
   startPolling()
 }
 
+async function scraperRetry() {
+  document.getElementById('btn-retry').disabled = true
+  const r = await apiPost('/retry-errors')
+  alert(r.message)
+  startPolling()
+}
+
 async function scraperStop() {
   const r = await apiPost('/stop')
   alert(r.message)
@@ -162,6 +172,11 @@ function startPolling() {
 
     // update buttons
     document.getElementById('btn-start').disabled = res.running
+    const btnRetry = document.getElementById('btn-retry')
+    if (btnRetry) {
+      btnRetry.disabled = res.running || res.stats.errors == 0
+      btnRetry.textContent = `↻ Retry เฉพาะที่ Error (${res.stats.errors || 0})`
+    }
     document.getElementById('btn-stop').disabled = !res.running
     document.getElementById('btn-reset').disabled = res.running
 

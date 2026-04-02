@@ -5,7 +5,7 @@
       <span class="front-pill">Results</span>
     </div>
     <h1>เราเจอแพ็กเกจที่เข้ากับข้อมูลรถของคุณแล้ว</h1>
-    <p class="front-page-sub">ใช้ lead token และ flow เดิมของระบบเหมือนเดิม แต่ปรับเลย์เอาต์ให้ดูราคากับช่องทางติดต่อได้ชัดขึ้น</p>
+    <p class="front-page-sub">นี่คือราคาเบื้องต้นและตัวเลือกแผนที่เหมาะกับรถของคุณ สามารถดูรายละเอียดต่อหรือพูดคุยกับทีมงานได้ทันที</p>
   </div>
 </section>
 
@@ -33,8 +33,8 @@
     <div class="front-result-grid-v2">
       <div class="front-result-main-v2">
         <div class="front-section-head front-section-head-left">
-          <span class="front-pill">Price Snapshot</span>
-          <h2>รายการแพ็กเกจที่มีในระบบ</h2>
+          <span class="front-pill">Recommended Plans</span>
+          <h2>แผนประกันที่น่าสนใจสำหรับรถของคุณ</h2>
         </div>
 
         <% if (packages.length > 0) { %>
@@ -97,9 +97,9 @@
           </div>
         <% } else { %>
           <div class="front-empty-card">
-            <span class="front-pill">No Packages Yet</span>
+            <span class="front-pill">Need Help</span>
             <h2>ยังไม่พบราคาในระบบสำหรับข้อมูลชุดนี้</h2>
-            <p>คุณยังสามารถใช้ช่องทางติดต่อด้านขวาเพื่อให้ทีมงานช่วยเช็กแพ็กเกจเพิ่มเติมได้ โดยระบบ tracking เดิมยังทำงานเหมือนเดิม</p>
+            <p>คุณยังสามารถติดต่อทีมงานได้ทันที เพื่อให้เราช่วยค้นหาแผนที่เหมาะสมและแนะนำทางเลือกเพิ่มเติมให้</p>
           </div>
         <% } %>
 
@@ -113,7 +113,7 @@
         <div class="front-contact-card-v2">
           <span class="front-pill">Contact Next Step</span>
           <h2>รับรายละเอียดเต็มและคุยกับทีมงานต่อได้ทันที</h2>
-          <p>ปุ่มเหล่านี้ยังใช้ `/click/line` และ `/click/facebook` เหมือนเดิม เพื่ออัปเดต lead status และ click tracking ของระบบปัจจุบัน</p>
+          <p>เลือกช่องทางที่สะดวก แล้วทีมงานจะช่วยสรุปความคุ้มครอง ราคา และแผนที่เหมาะกับรถของคุณให้แบบเข้าใจง่าย</p>
 
           <% if (lead.best_price) { %>
             <div class="front-price-highlight">
@@ -131,7 +131,7 @@
           <ul class="front-check-list">
             <li>ตอบกลับไว</li>
             <li>ช่วยเลือกแผนให้เหมาะกับรถ</li>
-            <li>ใช้ tracking lead เดิมของระบบ</li>
+            <li>อธิบายรายละเอียดแบบเข้าใจง่าย</li>
           </ul>
         </div>
       </aside>

@@ -88,7 +88,6 @@ async function handleEvent(event) {
 
   // human_first: เจ้าหน้าที่รับก่อน — bot ไม่ตอบอัตโนมัติ
   if (session.state === 'human_first') {
-    db.query("INSERT INTO notifications (type, ref_id) VALUES ('new_line_message', 0)").catch(() => {})
     await replyMessage(replyToken, [
       textMsg('ขอบคุณที่ติดต่อมาครับ 🙏\nเจ้าหน้าที่กำลังจะดูแลคุณในไม่ช้า\n\nหากต้องการให้ระบบตอบอัตโนมัติ พิมพ์ "bot" ได้เลยครับ')
     ])

@@ -1,39 +1,53 @@
-﻿<section class="front-page-head">
+<!-- RESULT HEADER -->
+<section class="front-page-head">
   <div class="container">
     <div class="front-page-head-row">
-      <a href="/" class="front-back-link">กลับไปเช็คราคาใหม่</a>
-      <span class="front-pill">Results</span>
+      <a href="/" class="front-back-link">← กลับไปเช็คราคาใหม่</a>
     </div>
-    <h1>เราเจอแพ็กเกจที่เข้ากับข้อมูลรถของคุณแล้ว</h1>
-    <p class="front-page-sub">นี่คือราคาเบื้องต้นและตัวเลือกแผนที่เหมาะกับรถของคุณ สามารถดูรายละเอียดต่อหรือพูดคุยกับทีมงานได้ทันที</p>
+    <h1>เรามีแผนประกันที่เหมาะกับคุณ</h1>
+
+    <!-- Gradient Summary Card -->
+    <div class="pub-result-summary">
+      <div class="pub-result-summary-item">
+        <div class="pub-result-summary-icon">🚗</div>
+        <div>
+          <div class="pub-result-summary-sub">รถของคุณ</div>
+          <div class="pub-result-summary-val"><%= lead.brand %> <%= lead.model %></div>
+        </div>
+      </div>
+      <div class="pub-result-summary-item">
+        <div class="pub-result-summary-icon">📅</div>
+        <div>
+          <div class="pub-result-summary-sub">ปีรถ</div>
+          <div class="pub-result-summary-val"><%= lead.year %></div>
+        </div>
+      </div>
+      <div class="pub-result-summary-item">
+        <div class="pub-result-summary-icon">🛡️</div>
+        <div>
+          <div class="pub-result-summary-sub">ประกันที่เลือก</div>
+          <div class="pub-result-summary-val"><%= insuranceConfig.label %></div>
+        </div>
+      </div>
+      <div class="pub-result-summary-item">
+        <div class="pub-result-summary-icon">📍</div>
+        <div>
+          <div class="pub-result-summary-sub">จังหวัด</div>
+          <div class="pub-result-summary-val"><%= lead.province %></div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
+<!-- RESULT GRID -->
 <section class="front-result-shell">
   <div class="container">
-    <div class="front-summary-card">
-      <div class="front-summary-item">
-        <small>รถของคุณ</small>
-        <strong><%= lead.brand %> <%= lead.model %></strong>
-      </div>
-      <div class="front-summary-item">
-        <small>ปีรถ</small>
-        <strong><%= lead.year %></strong>
-      </div>
-      <div class="front-summary-item">
-        <small>ประกันที่เลือก</small>
-        <strong><%= insuranceConfig.label %></strong>
-      </div>
-      <div class="front-summary-item">
-        <small>จังหวัด</small>
-        <strong><%= lead.province %></strong>
-      </div>
-    </div>
-
     <div class="front-result-grid-v2">
+
+      <!-- Main: Package List -->
       <div class="front-result-main-v2">
         <div class="front-section-head front-section-head-left">
-          <span class="front-pill">Recommended Plans</span>
           <h2>แผนประกันที่น่าสนใจสำหรับรถของคุณ</h2>
         </div>
 
@@ -49,7 +63,7 @@
               <article class="front-package-card-v2 <%= i === 0 ? 'featured' : '' %>">
                 <div class="front-package-top-v2">
                   <div>
-                    <span class="front-plan-badge"><%= i === 0 ? 'แนะนำก่อน' : 'ตัวเลือกเพิ่มเติม' %></span>
+                    <span class="front-plan-badge"><%= i === 0 ? 'แนะนำ' : 'ตัวเลือกเพิ่มเติม' %></span>
                     <h3><%= pkg.company_name %></h3>
                     <p><%= insuranceConfig.label %></p>
                   </div>
@@ -92,28 +106,38 @@
                     <% } %>
                   </div>
                 <% } %>
+
+                <!-- CTA per package -->
+                <div class="pub-pkg-cta-row">
+                  <a href="/click/line?token=<%= lead.token %>" class="pub-pkg-cta-line" target="_blank" rel="noopener">
+                    💬 รับรายละเอียดทาง LINE
+                  </a>
+                </div>
               </article>
             <% }) %>
           </div>
         <% } else { %>
           <div class="front-empty-card">
-            <span class="front-pill">Need Help</span>
             <h2>ยังไม่พบราคาในระบบสำหรับข้อมูลชุดนี้</h2>
-            <p>คุณยังสามารถติดต่อทีมงานได้ทันที เพื่อให้เราช่วยค้นหาแผนที่เหมาะสมและแนะนำทางเลือกเพิ่มเติมให้</p>
+            <p>คุณยังสามารถติดต่อทีมงานได้ทันที เพื่อให้เราช่วยค้นหาแผนที่เหมาะสมให้</p>
+            <div class="front-side-actions" style="margin-top:1rem">
+              <a href="/click/line?token=<%= lead.token %>" class="front-line-btn" target="_blank" rel="noopener">💬 ติดต่อทาง LINE</a>
+              <a href="/click/facebook?token=<%= lead.token %>" class="front-facebook-btn" target="_blank" rel="noopener">📘 คุยผ่าน Facebook</a>
+            </div>
           </div>
         <% } %>
 
         <div class="front-note-card">
           <strong>ข้อมูลที่ใช้ในครั้งนี้</strong>
-          <p>ทะเบียน <%= lead.license_plate %> | วันที่สร้างรายการ <%= new Date(lead.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %></p>
+          <p>ทะเบียน <%= lead.license_plate %> · <%= new Date(lead.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %></p>
         </div>
       </div>
 
+      <!-- Sidebar: Contact Panel -->
       <aside class="front-result-side-v2">
         <div class="front-contact-card-v2">
-          <span class="front-pill">Contact Next Step</span>
-          <h2>รับรายละเอียดเต็มและคุยกับทีมงานต่อได้ทันที</h2>
-          <p>เลือกช่องทางที่สะดวก แล้วทีมงานจะช่วยสรุปความคุ้มครอง ราคา และแผนที่เหมาะกับรถของคุณให้แบบเข้าใจง่าย</p>
+          <h2>ต้องการความช่วยเหลือ?</h2>
+          <p>ทีมเราพร้อมให้คำปรึกษาและช่วยเลือกแผนที่เหมาะกับคุณ</p>
 
           <% if (lead.best_price) { %>
             <div class="front-price-highlight">
@@ -124,20 +148,35 @@
           <% } %>
 
           <div class="front-side-actions">
-            <a href="/click/line?token=<%= lead.token %>" class="front-line-btn" target="_blank" rel="noopener">ติดต่อทาง LINE</a>
-            <a href="/click/facebook?token=<%= lead.token %>" class="front-facebook-btn" target="_blank" rel="noopener">คุยผ่าน Facebook</a>
+            <a href="/click/line?token=<%= lead.token %>" class="front-line-btn" target="_blank" rel="noopener">
+              💬 ติดต่อทาง LINE
+            </a>
+            <a href="/click/facebook?token=<%= lead.token %>" class="front-facebook-btn" target="_blank" rel="noopener">
+              📘 คุยผ่าน Facebook
+            </a>
           </div>
 
           <ul class="front-check-list">
-            <li>ตอบกลับไว</li>
+            <li>ทีมเราจะติดต่อกลับภายใน 5 นาที</li>
             <li>ช่วยเลือกแผนให้เหมาะกับรถ</li>
             <li>อธิบายรายละเอียดแบบเข้าใจง่าย</li>
           </ul>
         </div>
       </aside>
+
     </div>
   </div>
 </section>
+
+<!-- Mobile Bottom CTA Bar -->
+<div class="pub-mobile-cta-bar">
+  <a href="/click/facebook?token=<%= lead.token %>" class="pub-mobile-cta-fb" target="_blank" rel="noopener">
+    📘 Facebook
+  </a>
+  <a href="/click/line?token=<%= lead.token %>" class="pub-mobile-cta-line" target="_blank" rel="noopener">
+    💬 LINE
+  </a>
+</div>
 
 <script>
 function toggleCoverage(id, btn) {

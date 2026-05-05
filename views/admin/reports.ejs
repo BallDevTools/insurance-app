@@ -1,100 +1,206 @@
+<%
+const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : 0
+const f = funnel
+const lineRate  = pct(f.line_clicks,  f.total_leads)
+const fbRate    = pct(f.fb_clicks,    f.total_leads)
+const clickRate = pct(f.total_clicks, f.total_leads)
+const convRate  = pct(f.converted,    f.total_leads)
+%>
+
 <!-- FUNNEL STATS -->
 <div class="adm-stats">
   <div class="adm-stat adm-stat-blue">
-    <div class="adm-stat-icon">📋</div>
+    <div class="adm-stat-icon">👥</div>
     <div>
-      <div class="adm-stat-val"><%= funnel.total_quotes||0 %></div>
-      <div class="adm-stat-lbl">ใบเสนอราคาทั้งหมด</div>
-    </div>
-  </div>
-  <div class="adm-stat adm-stat-purple">
-    <div class="adm-stat-icon">📞</div>
-    <div>
-      <div class="adm-stat-val"><%= funnel.total_contacted||0 %></div>
-      <div class="adm-stat-lbl">ติดต่อแล้ว</div>
-      <div class="adm-stat-sub"><%= funnel.total_quotes?Math.round(funnel.total_contacted/funnel.total_quotes*100):0 %>% conversion</div>
+      <div class="adm-stat-val"><%= f.total_leads||0 %></div>
+      <div class="adm-stat-lbl">Leads ทั้งหมด</div>
     </div>
   </div>
   <div class="adm-stat adm-stat-green">
-    <div class="adm-stat-icon">🏆</div>
+    <div class="adm-stat-icon">💬</div>
     <div>
-      <div class="adm-stat-val"><%= funnel.total_completed||0 %></div>
-      <div class="adm-stat-lbl">ปิดงานสำเร็จ</div>
-      <div class="adm-stat-sub"><%= funnel.total_contacted?Math.round(funnel.total_completed/funnel.total_contacted*100):0 %>% close rate</div>
+      <div class="adm-stat-val"><%= f.line_clicks||0 %></div>
+      <div class="adm-stat-lbl">คลิก LINE</div>
+      <div class="adm-stat-sub"><%= lineRate %>% ของ leads</div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-purple">
+    <div class="adm-stat-icon">📘</div>
+    <div>
+      <div class="adm-stat-val"><%= f.fb_clicks||0 %></div>
+      <div class="adm-stat-lbl">คลิก Facebook</div>
+      <div class="adm-stat-sub"><%= fbRate %>% ของ leads</div>
     </div>
   </div>
   <div class="adm-stat adm-stat-orange">
-    <div class="adm-stat-icon">💰</div>
+    <div class="adm-stat-icon">🏆</div>
     <div>
-      <% const totalRev = revenueByType.reduce((s,t)=>s+parseFloat(t.revenue||0),0) %>
-      <div class="adm-stat-val">฿<%= formatNumber(Math.round(totalRev/1000)) %>K</div>
-      <div class="adm-stat-lbl">เบี้ยรวมทั้งหมด</div>
+      <div class="adm-stat-val"><%= f.converted||0 %></div>
+      <div class="adm-stat-lbl">ปิดงานสำเร็จ</div>
+      <div class="adm-stat-sub"><%= convRate %>% conversion</div>
     </div>
   </div>
 </div>
 
 <!-- MONTHLY CHART -->
 <div class="adm-card adm-card-full">
-  <div class="adm-card-title">📊 ยอดรายเดือน (12 เดือนล่าสุด)</div>
+  <div class="adm-card-title">📊 Leads รายเดือน (12 เดือนล่าสุด)</div>
   <div class="adm-monthly-chart">
     <% if (!monthly.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
-    <% const maxQ = Math.max(...monthly.map(m=>m.quotes),1) %>
+    <% const maxM = Math.max(...monthly.map(m=>m.leads), 1) %>
     <% monthly.forEach(m=>{ %>
       <div class="adm-bar-group adm-bar-wide">
         <div class="adm-bar-track">
-          <div class="adm-bar-fill adm-bar-month" style="height:<%= Math.round(m.quotes/maxQ*100) %>%">
-            <span class="adm-bar-val"><%= m.quotes %></span>
+          <div class="adm-bar-fill adm-bar-month" style="height:<%= Math.round(m.leads/maxM*100) %>%">
+            <span class="adm-bar-val"><%= m.leads %></span>
           </div>
         </div>
         <div class="adm-bar-lbl adm-bar-month-lbl"><%= m.month_label %></div>
-        <div class="adm-bar-rev">฿<%= formatNumber(Math.round(parseFloat(m.revenue)/1000)) %>K</div>
+        <div class="adm-bar-rev adm-sub"><%= m.clicks %> คลิก</div>
       </div>
     <% }) %>
   </div>
 </div>
 
 <div class="adm-charts">
-  <!-- Revenue by Type -->
+
+  <!-- By Source -->
   <div class="adm-card">
-    <div class="adm-card-title">💰 เบี้ยแยกตามประเภทประกัน</div>
-    <% const maxRev = Math.max(...revenueByType.map(t=>parseFloat(t.revenue||0)),1) %>
+    <div class="adm-card-title">📡 แยกตามแหล่ง Traffic</div>
+    <% const maxSrc = Math.max(...bySource.map(s=>s.cnt), 1) %>
     <div class="adm-hbars">
-      <% revenueByType.forEach(t=>{ %>
+      <% bySource.forEach(s=>{ %>
         <div class="adm-hbar-row">
-          <span class="adm-hbar-lbl"><span class="adm-type-pill adm-type-<%= t.insurance_type %>"><%= TYPE_MAP[t.insurance_type] %></span></span>
+          <span class="adm-hbar-lbl"><%= SOURCE_MAP[s.source]||s.source||'ไม่ระบุ' %></span>
           <div class="adm-hbar-track">
-            <div class="adm-hbar-fill" style="width:<%= Math.round(parseFloat(t.revenue||0)/maxRev*100) %>%"></div>
+            <div class="adm-hbar-fill" style="width:<%= Math.round(s.cnt/maxSrc*100) %>%"></div>
           </div>
-          <span class="adm-hbar-val">฿<%= formatNumber(Math.round(parseFloat(t.revenue||0)/1000)) %>K</span>
+          <span class="adm-hbar-val"><%= s.cnt %></span>
         </div>
       <% }) %>
+      <% if (!bySource.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
     </div>
     <div style="margin-top:.75rem">
-      <% revenueByType.forEach(t=>{ %>
-        <div class="adm-sub" style="margin-bottom:.25rem"><%= TYPE_MAP[t.insurance_type]%>: <%= t.cnt %> ใบ · ฿<%= formatNumber(Math.round(parseFloat(t.revenue||0))) %></div>
+      <% bySource.forEach(s=>{ %>
+        <div class="adm-sub" style="margin-bottom:.2rem">
+          <%= SOURCE_MAP[s.source]||s.source||'ไม่ระบุ' %>: <%= s.cnt %> leads · <%= s.clicks %> คลิก · <%= s.converted %> ปิดงาน
+        </div>
       <% }) %>
     </div>
   </div>
 
-  <!-- Top 10 Quotes -->
-  <div class="adm-card adm-card-wide">
-    <div class="adm-card-title">🔝 Top 10 ใบเสนอราคา (เบี้ยสูงสุด)</div>
-    <div class="adm-table-wrap">
-      <table class="adm-table">
-        <thead><tr><th>#</th><th>เลขที่</th><th>รถ</th><th>ประกัน</th><th>เบี้ย</th><th>ลูกค้า</th></tr></thead>
-        <tbody>
-          <% topQuotes.forEach((q,i)=>{ %>
-            <tr>
-              <td><strong>#<%= i+1 %></strong></td>
-              <td><a href="/admin/quotes/<%= q.id %>" class="adm-qnum"><%= q.quote_number %></a></td>
-              <td><%= q.car_brand %> <%= q.car_model %> (<%= q.car_year %>)</td>
-              <td><span class="adm-type-pill adm-type-<%= q.insurance_type %>"><%= TYPE_MAP[q.insurance_type] %></span></td>
-              <td class="adm-money">฿<%= formatNumber(q.premium_amount) %></td>
-              <td><%= q.full_name||'-' %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
+  <!-- By Insurance Type -->
+  <div class="adm-card">
+    <div class="adm-card-title">🛡️ แยกตามประเภทประกัน</div>
+    <% const maxType = Math.max(...byType.map(t=>t.cnt), 1) %>
+    <div class="adm-hbars">
+      <% byType.forEach(t=>{ %>
+        <div class="adm-hbar-row">
+          <span class="adm-hbar-lbl">
+            <span class="adm-type-pill adm-type-<%= t.insurance_type %>"><%= TYPE_MAP[t.insurance_type]||t.insurance_type %></span>
+          </span>
+          <div class="adm-hbar-track">
+            <div class="adm-hbar-fill" style="width:<%= Math.round(t.cnt/maxType*100) %>%"></div>
+          </div>
+          <span class="adm-hbar-val"><%= t.cnt %></span>
+        </div>
+      <% }) %>
+      <% if (!byType.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
     </div>
+    <div style="margin-top:.75rem">
+      <% byType.forEach(t=>{ %>
+        <div class="adm-sub" style="margin-bottom:.2rem">
+          <%= TYPE_MAP[t.insurance_type]||t.insurance_type %>: <%= t.cnt %> leads · <%= t.clicks %> คลิก · <%= pct(t.clicks,t.cnt) %>% click rate
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- Top Brands -->
+  <div class="adm-card">
+    <div class="adm-card-title">🚗 ยี่ห้อรถยอดนิยม (Top 8)</div>
+    <% const maxBrand = Math.max(...topBrands.map(b=>b.cnt), 1) %>
+    <div class="adm-hbars">
+      <% topBrands.forEach((b,i)=>{ %>
+        <div class="adm-hbar-row">
+          <span class="adm-hbar-lbl"><strong>#<%= i+1 %></strong> <%= b.brand||'ไม่ระบุ' %></span>
+          <div class="adm-hbar-track">
+            <div class="adm-hbar-fill" style="width:<%= Math.round(b.cnt/maxBrand*100) %>%;background:#3b82f6"></div>
+          </div>
+          <span class="adm-hbar-val"><%= b.cnt %></span>
+        </div>
+      <% }) %>
+      <% if (!topBrands.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
+    </div>
+  </div>
+
+  <!-- Daily 7 Days -->
+  <div class="adm-card">
+    <div class="adm-card-title">📅 7 วันล่าสุด</div>
+    <% const maxDay = Math.max(...daily.map(d=>d.leads), 1) %>
+    <div class="adm-monthly-chart" style="height:140px;align-items:flex-end">
+      <% if (!daily.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
+      <% daily.forEach(d=>{ %>
+        <div class="adm-bar-group" style="flex:1">
+          <div class="adm-bar-track">
+            <div class="adm-bar-fill adm-bar-month" style="height:<%= Math.round(d.leads/maxDay*100) %>%;background:#10b981">
+              <span class="adm-bar-val"><%= d.leads %></span>
+            </div>
+          </div>
+          <div class="adm-bar-lbl adm-bar-month-lbl"><%= d.day_label %></div>
+          <div class="adm-bar-rev adm-sub"><%= d.clicks %>คลิก</div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+</div>
+
+<!-- RECENT LEADS -->
+<div class="adm-card adm-card-full">
+  <div class="adm-card-header">
+    <div class="adm-card-title">🕐 Leads ล่าสุด 10 รายการ</div>
+    <a href="/admin/leads" class="adm-btn adm-btn-ghost" style="font-size:.8rem">ดูทั้งหมด →</a>
+  </div>
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead><tr>
+        <th>รถ / ประกัน</th>
+        <th>ราคาดีสุด</th>
+        <th>ลูกค้า</th>
+        <th>CTA</th>
+        <th>แหล่ง</th>
+        <th>สถานะ</th>
+        <th>วันที่</th>
+      </tr></thead>
+      <tbody>
+        <% if (!recentLeads.length) { %>
+          <tr><td colspan="7" class="adm-empty-cell">ยังไม่มีข้อมูล</td></tr>
+        <% } %>
+        <% recentLeads.forEach(l=>{ %>
+          <tr>
+            <td>
+              <div><strong><%= l.brand %> <%= l.model %></strong> ปี <%= l.year %></div>
+              <div><span class="adm-type-pill adm-type-<%= l.insurance_type %>"><%= TYPE_MAP[l.insurance_type]||l.insurance_type %></span></div>
+            </td>
+            <td class="adm-money">
+              <% if (l.best_price) { %>฿<%= formatNumber(l.best_price) %><% } else { %>-<% } %>
+            </td>
+            <td>
+              <% if (l.name) { %><div><%= l.name %></div><% } else { %><span class="adm-sub">ไม่ระบุ</span><% } %>
+              <% if (l.phone) { %><div class="adm-sub"><%= l.phone %></div><% } %>
+            </td>
+            <td>
+              <% if (l.clicked_line) { %><span class="adm-click-badge adm-click-line">LINE ✓</span> <% } %>
+              <% if (l.clicked_facebook) { %><span class="adm-click-badge adm-click-fb">FB ✓</span><% } %>
+              <% if (!l.clicked_line && !l.clicked_facebook) { %><span class="adm-sub">-</span><% } %>
+            </td>
+            <td class="adm-sub"><%= SOURCE_MAP[l.source]||l.source||'-' %></td>
+            <td><span class="adm-status adm-status-<%= l.status %>"><%= LEAD_STATUS_MAP[l.status]||l.status %></span></td>
+            <td class="adm-dt"><%= new Date(l.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
   </div>
 </div>

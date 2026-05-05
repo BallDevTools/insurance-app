@@ -62,7 +62,7 @@ module.exports = async function adminPlugin(fastify, opts) {
   })
 
   fastify.post('/login', {
-    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } }
+    config: { rateLimit: { max: 5, timeWindow: '5 minutes' } }
   }, async (req, reply) => {
     const { username = '', password = '' } = req.body || {}
     const fail = (msg) => {

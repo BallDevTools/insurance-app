@@ -1,7 +1,7 @@
 'use strict'
 
 const db = require('../db')
-const { validateSignature, replyMessage, getUserProfile, textMsg } = require('../services/lineBot')
+const { validateSignature, replyMessage, getUserProfile, textMsg, welcomeBubble } = require('../services/lineBot')
 const { detectIntent } = require('../services/intentDetector')
 const { handleIntent } = require('../services/dbResponder')
 const { getAIResponse } = require('../services/aiResponder')
@@ -88,9 +88,13 @@ async function handleEvent(event) {
 
   // human_first: เจ้าหน้าที่รับก่อน — bot ไม่ตอบอัตโนมัติ
   if (session.state === 'human_first') {
-    await replyMessage(replyToken, [
-      textMsg('ขอบคุณที่ติดต่อมาครับ 🙏\nเจ้าหน้าที่กำลังจะดูแลคุณในไม่ช้า\n\nหากต้องการให้ระบบตอบอัตโนมัติ พิมพ์ "bot" ได้เลยครับ')
-    ])
+    if (session.isNew) {
+      await replyMessage(replyToken, [welcomeBubble()])
+    } else {
+      await replyMessage(replyToken, [
+        textMsg('ขอบคุณที่ติดต่อมาครับ 🙏\nเจ้าหน้าที่กำลังจะดูแลคุณในไม่ช้า\n\nหากต้องการให้ระบบตอบอัตโนมัติ พิมพ์ "bot" ได้เลยครับ')
+      ])
+    }
     return
   }
 
@@ -175,7 +179,7 @@ async function getOrCreateSession(userId) {
   const [rows] = await db.query('SELECT * FROM line_sessions WHERE line_user_id = ?', [userId])
   if (rows.length > 0) {
     await db.query('UPDATE line_sessions SET updated_at = NOW() WHERE line_user_id = ?', [userId])
-    return rows[0]
+    return { ...rows[0], isNew: false }
   }
 
   // ดึงโปรไฟล์จาก LINE
@@ -185,7 +189,7 @@ async function getOrCreateSession(userId) {
     [userId, profile?.displayName || 'Unknown', profile?.pictureUrl || null]
   )
   const [newRows] = await db.query('SELECT * FROM line_sessions WHERE line_user_id = ?', [userId])
-  return newRows[0]
+  return { ...newRows[0], isNew: true }
 }
 
 async function setHandoffState(session, userId) {

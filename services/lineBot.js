@@ -184,23 +184,172 @@ function quoteBubble(quote) {
   }
 }
 
+// Flex: แจ้ง admin เมื่อมี lead ใหม่ (Clean White Card)
+function newLeadBubble(lead) {
+  const TYPE_MAP   = { class1: 'ชั้น 1', class2plus: 'ชั้น 2+', class3plus: 'ชั้น 3+', compulsory: 'พรบ.' }
+  const SOURCE_MAP = { organic: 'Organic', line_ads: 'LINE Ads', facebook_ads: 'Facebook Ads', google: 'Google', other: 'อื่นๆ' }
+  const SOURCE_COLOR = { organic: '#4f46e5', line_ads: '#16a34a', facebook_ads: '#2563eb', google: '#dc2626', other: '#6b7280' }
+  const color = SOURCE_COLOR[lead.source] || '#4f46e5'
+  const APP = process.env.APP_URL || 'http://localhost:3000'
+  const now = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'short', timeStyle: 'short' })
+
+  const contactContents = []
+  if (lead.name && lead.phone) {
+    contactContents.push({ type: 'text', text: `👤 ${lead.name}`, size: 'sm', color: '#334155', flex: 1 })
+    contactContents.push({ type: 'text', text: `📞 ${lead.phone}`, size: 'sm', color: '#334155', flex: 1, align: 'end' })
+  } else if (lead.name) {
+    contactContents.push({ type: 'text', text: `👤 ${lead.name}`, size: 'sm', color: '#334155' })
+  } else if (lead.phone) {
+    contactContents.push({ type: 'text', text: `📞 ${lead.phone}`, size: 'sm', color: '#334155' })
+  }
+
+  const mainContents = [
+    // Header row: 🔔 Lead ใหม่! + badge pill
+    {
+      type: 'box', layout: 'horizontal', contents: [
+        {
+          type: 'box', layout: 'vertical', flex: 1, contents: [
+            { type: 'text', text: '🔔 Lead ใหม่!', size: 'sm', weight: 'bold', color: '#0f172a' },
+            { type: 'text', text: now, size: 'xs', color: '#94a3b8', margin: 'xs' }
+          ]
+        },
+        {
+          type: 'box', layout: 'vertical', flex: 0, justifyContent: 'center', contents: [{
+            type: 'box', layout: 'vertical', backgroundColor: color, cornerRadius: '20px',
+            paddingStart: '10px', paddingEnd: '10px', paddingTop: '4px', paddingBottom: '4px',
+            contents: [{ type: 'text', text: SOURCE_MAP[lead.source] || lead.source, size: 'xxs', color: '#ffffff', align: 'center' }]
+          }]
+        }
+      ]
+    },
+    { type: 'separator', margin: 'md', color: '#e2e8f0' },
+    // ชื่อรถ + ปี
+    {
+      type: 'box', layout: 'horizontal', margin: 'md', contents: [
+        { type: 'text', text: `${lead.brand} ${lead.model}`, size: 'md', weight: 'bold', color: '#0f172a', flex: 1, wrap: true },
+        { type: 'text', text: `ปี ${lead.year}`, size: 'sm', color: '#64748b', flex: 0, align: 'end', gravity: 'bottom' }
+      ]
+    },
+    // Info grid: ประกัน + จังหวัด
+    {
+      type: 'box', layout: 'vertical', margin: 'sm', spacing: 'xs', contents: [
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: 'ประกัน', size: 'xs', color: '#94a3b8', flex: 3 },
+            { type: 'text', text: TYPE_MAP[lead.insurance_type] || lead.insurance_type, size: 'xs', color: '#334155', flex: 5, weight: 'bold' }
+          ]
+        },
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: 'จังหวัด', size: 'xs', color: '#94a3b8', flex: 3 },
+            { type: 'text', text: lead.province, size: 'xs', color: '#334155', flex: 5 }
+          ]
+        }
+      ]
+    }
+  ]
+
+  // Price highlight box
+  if (lead.best_price) {
+    mainContents.push({
+      type: 'box', layout: 'horizontal', margin: 'md',
+      backgroundColor: '#f8fafc', cornerRadius: '8px', paddingAll: '12px',
+      borderWidth: '1px', borderColor: '#e2e8f0',
+      contents: [
+        { type: 'text', text: 'ราคาเริ่มต้น', size: 'xs', color: '#64748b', flex: 3, gravity: 'center' },
+        { type: 'text', text: `฿${Number(lead.best_price).toLocaleString('th-TH')}`, size: 'xl', weight: 'bold', color, flex: 4, align: 'end' }
+      ]
+    })
+  }
+
+  // Contact row
+  if (contactContents.length > 0) {
+    mainContents.push({ type: 'separator', margin: 'md', color: '#e2e8f0' })
+    mainContents.push({ type: 'box', layout: 'horizontal', margin: 'md', contents: contactContents })
+  }
+
+  return {
+    type: 'flex',
+    altText: `🔔 Lead ใหม่! ${lead.brand} ${lead.model} ปี ${lead.year} • ${TYPE_MAP[lead.insurance_type] || lead.insurance_type}`,
+    contents: {
+      type: 'bubble', size: 'mega',
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '0px',
+        contents: [
+          // Accent bar
+          { type: 'box', layout: 'vertical', height: '6px', backgroundColor: color, contents: [] },
+          // Main content
+          { type: 'box', layout: 'vertical', paddingAll: '16px', paddingTop: '14px', contents: mainContents }
+        ]
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', paddingTop: '4px',
+        contents: [{
+          type: 'button',
+          action: { type: 'uri', label: '📋 ดู Lead ใน Admin', uri: `${APP}/admin/leads` },
+          style: 'primary', color, height: 'sm'
+        }]
+      }
+    }
+  }
+
+}
+
+// Flex: welcome card สำหรับ user ที่ทัก LINE ครั้งแรก
+function welcomeBubble() {
+  const APP = process.env.APP_URL || 'http://localhost:3000'
+  return {
+    type: 'flex',
+    altText: 'ยินดีต้อนรับสู่บริการประกันรถยนต์ออนไลน์ 🛡️',
+    contents: {
+      type: 'bubble', size: 'mega',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#1a56db', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🛡️ ประกันรถยนต์ออนไลน์', color: '#b3c6ff', size: 'sm' },
+          { type: 'text', text: 'ยินดีต้อนรับครับ! 👋', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
+        ]
+      },
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm',
+        contents: [
+          { type: 'text', text: 'เราช่วยเรื่องประกันรถได้ครบจบในที่เดียว', size: 'sm', color: '#374151', wrap: true },
+          { type: 'separator', margin: 'md' },
+          {
+            type: 'box', layout: 'vertical', margin: 'md', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '📌 บริการของเรา', size: 'xs', weight: 'bold', color: '#6b7280' },
+              { type: 'text', text: '• เช็คราคาประกันใน 30 วินาที', size: 'sm', color: '#374151' },
+              { type: 'text', text: '• เปรียบเทียบ 12+ บริษัทประกัน', size: 'sm', color: '#374151' },
+              { type: 'text', text: '• ใบเสนอราคาภายใน 5 นาที', size: 'sm', color: '#374151' }
+            ]
+          }
+        ]
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            action: { type: 'uri', label: '🔍 เช็คราคาเลย', uri: APP },
+            style: 'primary', color: '#1a56db', height: 'sm'
+          },
+          {
+            type: 'button',
+            action: { type: 'message', label: '💬 คุยกับเจ้าหน้าที่', text: 'ติดต่อเจ้าหน้าที่' },
+            style: 'secondary', height: 'sm'
+          }
+        ]
+      }
+    }
+  }
+}
+
 // แจ้งเตือนเจ้าหน้าที่เมื่อมี lead ใหม่
 async function notifyAdminNewLead(lead) {
   const adminId = process.env.LINE_ADMIN_USER_ID
   if (!adminId) return
-  const typeMap = { class1: 'ชั้น 1', class2plus: 'ชั้น 2+', class3plus: 'ชั้น 3+' }
-  const sourceMap = { organic: 'Organic', line_ads: 'LINE Ads', facebook_ads: 'Facebook Ads', google: 'Google', other: 'อื่นๆ' }
-  const lines = [
-    '🔔 มี Lead ใหม่เข้ามาแล้ว!',
-    `🚗 ${lead.brand} ${lead.model} ปี ${lead.year}`,
-    `🛡️ ประกัน${typeMap[lead.insurance_type] || lead.insurance_type}`,
-    `📍 ${lead.province}`,
-  ]
-  if (lead.name)  lines.push(`👤 ${lead.name}`)
-  if (lead.phone) lines.push(`📞 ${lead.phone}`)
-  lines.push(`📌 แหล่ง: ${sourceMap[lead.source] || lead.source}`)
-  lines.push('\nดู Leads ทั้งหมดที่ Admin Dashboard')
-  return pushMessage(adminId, [textMsg(lines.join('\n'))]).catch(() => {})
+  return pushMessage(adminId, [newLeadBubble(lead)]).catch(() => {})
 }
 
-module.exports = { validateSignature, replyMessage, pushMessage, getUserProfile, textMsg, quoteBubble, notifyAdminNewLead }
+module.exports = { validateSignature, replyMessage, pushMessage, getUserProfile, textMsg, quoteBubble, newLeadBubble, welcomeBubble, notifyAdminNewLead }

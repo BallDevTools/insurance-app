@@ -1,0 +1,7 @@
+node_modules
+.env
+.git
+*.md
+*.png
+*.jpg
+ecosystem.config.js

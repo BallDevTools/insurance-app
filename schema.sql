@@ -46,6 +46,13 @@ CREATE TABLE IF NOT EXISTS customer_leads (
   FOREIGN KEY (quote_id) REFERENCES quotes(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ตั้งค่าระบบ
+CREATE TABLE IF NOT EXISTS app_settings (
+  `key` VARCHAR(100) PRIMARY KEY,
+  `value` TEXT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- =============================================
 -- Seed Data - จังหวัด
 -- =============================================

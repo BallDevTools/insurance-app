@@ -14,7 +14,7 @@ if (process.env.SENTRY_DSN) {
 
 const path    = require('path')
 const crypto  = require('crypto')
-const fastify = require('fastify')({ logger: true })
+const fastify = require('fastify')({ logger: true, trustProxy: true })
 const db      = require('./db')
 const { INSURANCE_TYPES } = require('./calculator')
 const { sanitizeBody }    = require('./services/sanitize')

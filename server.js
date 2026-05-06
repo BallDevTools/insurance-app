@@ -191,7 +191,7 @@ fastify.post('/quote', {
   // ดึงราคาจาก scraped_packages
   const scraperClass = CLASS_MAP[insurance_type]
   const [packages] = await db.query(
-    `SELECT company_name, insurance_class, premium_amount, premium_discounted
+    `SELECT company_name, insurance_class, premium_amount, premium_discounted, coverage
      FROM scraped_packages
      WHERE model_id = ? AND car_year = ? AND insurance_class = ?
      ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
@@ -259,10 +259,26 @@ fastify.get('/result/:token', async (req, reply) => {
   const insuranceConfig = INSURANCE_TYPES[lead.insurance_type]
 
   let packages = []
-  try {
-    const parsed = JSON.parse(lead.packages_json || '[]')
-    if (Array.isArray(parsed)) packages = parsed
-  } catch {}
+  if (lead.model_id && lead.year && lead.insurance_type) {
+    const scraperClass = CLASS_MAP[lead.insurance_type]
+    const [pkgRows] = await db.query(
+      `SELECT company_name, insurance_class, premium_amount, premium_discounted, coverage
+       FROM scraped_packages
+       WHERE model_id = ? AND car_year = ? AND insurance_class = ?
+       ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
+      [lead.model_id, lead.year, scraperClass]
+    ).catch(() => [[]])
+    packages = pkgRows.map(pkg => ({
+      ...pkg,
+      coverage: typeof pkg.coverage === 'string' ? JSON.parse(pkg.coverage) : pkg.coverage
+    }))
+  }
+  if (packages.length === 0) {
+    try {
+      const parsed = JSON.parse(lead.packages_json || '[]')
+      if (Array.isArray(parsed)) packages = parsed
+    } catch {}
+  }
 
   // CTA URLs จาก settings
   const [settingRows] = await db.query(

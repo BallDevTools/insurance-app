@@ -37,6 +37,11 @@
         </div>
       </div>
     </div>
+    <% if (lead.model_id) { %>
+    <div style="text-align:center;margin-top:1rem">
+      <a href="/compare?model_id=<%= lead.model_id %>&year=<%= lead.year %>" class="front-back-link">⚖️ เปรียบเทียบราคาทุกชั้นประกัน</a>
+    </div>
+    <% } %>
   </div>
 </section>
 

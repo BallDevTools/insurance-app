@@ -54,7 +54,7 @@ fastify.register(require('@fastify/view'), {
 fastify.register(require('@fastify/cookie'))
 fastify.register(require('@fastify/session'), {
   secret: process.env.SESSION_SECRET || 'insurance-admin-secret-key-2026-minimum32ch',
-  cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 60 * 60 * 8 * 1000 }
+  cookie: { secure: false, httpOnly: true, sameSite: 'lax', maxAge: 60 * 60 * 8 * 1000 }
 })
 
 // =============================================

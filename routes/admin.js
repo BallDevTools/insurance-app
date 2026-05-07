@@ -364,6 +364,17 @@ module.exports = async function adminPlugin(fastify, opts) {
   // REPORTS
   // ============================================================
   fastify.get('/reports', async (req, reply) => {
+    const isSuperAdmin = req.session.admin?.role === 'superadmin'
+    const view = isSuperAdmin ? (req.query.view === 'affiliate' ? 'affiliate' : 'direct') : 'all'
+
+    // WHERE clause based on view
+    const wAll     = ''
+    const wDirect  = 'WHERE affiliate_id IS NULL'
+    const wAff     = 'WHERE affiliate_id IS NOT NULL'
+    const wMonthly = view === 'direct' ? 'AND affiliate_id IS NULL'
+                   : view === 'affiliate' ? 'AND affiliate_id IS NOT NULL' : ''
+    const w = view === 'direct' ? wDirect : view === 'affiliate' ? wAff : wAll
+
     const [[funnel]] = await db.query(`
       SELECT
         COUNT(*) AS total_leads,
@@ -371,7 +382,7 @@ module.exports = async function adminPlugin(fastify, opts) {
         SUM(clicked_facebook) AS fb_clicks,
         SUM(CASE WHEN clicked_line=1 OR clicked_facebook=1 THEN 1 ELSE 0 END) AS total_clicks,
         SUM(CASE WHEN status='converted' THEN 1 ELSE 0 END) AS converted
-      FROM leads
+      FROM leads ${w}
     `).catch(() => [[{ total_leads:0, line_clicks:0, fb_clicks:0, total_clicks:0, converted:0 }]])
 
     const [monthly] = await db.query(`
@@ -381,7 +392,7 @@ module.exports = async function adminPlugin(fastify, opts) {
              SUM(CASE WHEN clicked_line=1 OR clicked_facebook=1 THEN 1 ELSE 0 END) AS clicks,
              SUM(CASE WHEN status='converted' THEN 1 ELSE 0 END) AS converted
       FROM leads
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 11 MONTH)
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 11 MONTH) ${wMonthly}
       GROUP BY month, month_label ORDER BY month ASC
     `).catch(() => [[]])
 
@@ -389,19 +400,19 @@ module.exports = async function adminPlugin(fastify, opts) {
       SELECT source, COUNT(*) AS cnt,
              SUM(CASE WHEN clicked_line=1 OR clicked_facebook=1 THEN 1 ELSE 0 END) AS clicks,
              SUM(CASE WHEN status='converted' THEN 1 ELSE 0 END) AS converted
-      FROM leads GROUP BY source ORDER BY cnt DESC
+      FROM leads ${w} GROUP BY source ORDER BY cnt DESC
     `).catch(() => [[]])
 
     const [byType] = await db.query(`
       SELECT insurance_type, COUNT(*) AS cnt,
              SUM(CASE WHEN clicked_line=1 OR clicked_facebook=1 THEN 1 ELSE 0 END) AS clicks
-      FROM leads GROUP BY insurance_type ORDER BY cnt DESC
+      FROM leads ${w} GROUP BY insurance_type ORDER BY cnt DESC
     `).catch(() => [[]])
 
     const [topBrands] = await db.query(`
       SELECT brand, COUNT(*) AS cnt,
              SUM(CASE WHEN clicked_line=1 OR clicked_facebook=1 THEN 1 ELSE 0 END) AS clicks
-      FROM leads GROUP BY brand ORDER BY cnt DESC LIMIT 8
+      FROM leads ${w} GROUP BY brand ORDER BY cnt DESC LIMIT 8
     `).catch(() => [[]])
 
     const [daily] = await db.query(`
@@ -410,19 +421,38 @@ module.exports = async function adminPlugin(fastify, opts) {
              COUNT(*) AS leads,
              SUM(CASE WHEN clicked_line=1 OR clicked_facebook=1 THEN 1 ELSE 0 END) AS clicks
       FROM leads
-      WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+      WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) ${wMonthly}
       GROUP BY DATE(created_at) ORDER BY day ASC
     `).catch(() => [[]])
 
     const [recentLeads] = await db.query(`
-      SELECT id, brand, model, year, insurance_type, source, name, phone,
-             best_price, clicked_line, clicked_facebook, status, created_at
-      FROM leads ORDER BY created_at DESC LIMIT 10
+      SELECT l.id, l.brand, l.model, l.year, l.insurance_type, l.source, l.name, l.phone,
+             l.best_price, l.clicked_line, l.clicked_facebook, l.status, l.created_at,
+             a.slug AS aff_slug
+      FROM leads l LEFT JOIN affiliates a ON a.id = l.affiliate_id
+      ${w} ORDER BY l.created_at DESC LIMIT 10
     `).catch(() => [[]])
+
+    // Affiliate breakdown (only for affiliate view)
+    let affBreakdown = []
+    if (view === 'affiliate') {
+      ;[affBreakdown] = await db.query(`
+        SELECT a.id, a.slug, a.name, a.commission_rate,
+               COUNT(l.id) AS total_leads,
+               SUM(CASE WHEN l.status='converted' THEN 1 ELSE 0 END) AS converted,
+               SUM(CASE WHEN l.clicked_line=1 OR l.clicked_facebook=1 THEN 1 ELSE 0 END) AS clicks,
+               SUM(CASE WHEN l.commission_paid=0 AND l.commission_amount IS NOT NULL THEN l.commission_amount ELSE 0 END) AS pending_commission,
+               SUM(CASE WHEN l.commission_paid=1 THEN l.commission_amount ELSE 0 END) AS paid_commission
+        FROM affiliates a
+        LEFT JOIN leads l ON l.affiliate_id = a.id
+        GROUP BY a.id ORDER BY total_leads DESC
+      `).catch(() => [[]])
+    }
 
     return av(reply, 'reports.ejs', {
       title: 'รายงาน', activePage: 'reports', admin: req.session.admin,
-      funnel, monthly, bySource, byType, topBrands, daily, recentLeads
+      funnel, monthly, bySource, byType, topBrands, daily, recentLeads,
+      view, affBreakdown
     })
   })
 

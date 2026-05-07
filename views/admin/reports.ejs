@@ -7,6 +7,28 @@ const clickRate = pct(f.total_clicks, f.total_leads)
 const convRate  = pct(f.converted,    f.total_leads)
 %>
 
+<% if (admin.role === 'superadmin') { %>
+<!-- VIEW TABS -->
+<div class="rpt-tabs">
+  <a href="/admin/reports?view=direct"
+     class="rpt-tab <%= view === 'direct' ? 'rpt-tab-active' : '' %>">
+    <i data-lucide="user" style="width:14px;height:14px;vertical-align:middle;margin-right:5px"></i>
+    Direct / Owner
+  </a>
+  <a href="/admin/reports?view=affiliate"
+     class="rpt-tab <%= view === 'affiliate' ? 'rpt-tab-active' : '' %>">
+    <i data-lucide="users" style="width:14px;height:14px;vertical-align:middle;margin-right:5px"></i>
+    Affiliate
+  </a>
+</div>
+<style>
+.rpt-tabs{display:flex;gap:4px;margin-bottom:1rem;background:#f1f5f9;padding:4px;border-radius:10px;width:fit-content}
+.rpt-tab{padding:7px 20px;border-radius:8px;font-size:13px;font-weight:600;color:#64748b;text-decoration:none;transition:all .15s;display:flex;align-items:center}
+.rpt-tab:hover{background:#e2e8f0;color:#334155}
+.rpt-tab-active{background:#fff;color:#1e293b;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+</style>
+<% } %>
+
 <!-- FUNNEL STATS -->
 <div class="adm-stats">
   <div class="adm-stat adm-stat-blue">
@@ -95,6 +117,73 @@ const convRate  = pct(f.converted,    f.total_leads)
   </div>
   <% } %>
 </div>
+
+<!-- AFFILIATE BREAKDOWN (affiliate view only) -->
+<% if (view === 'affiliate' && affBreakdown && affBreakdown.length) { %>
+<div class="adm-card adm-card-full">
+  <div class="adm-card-header">
+    <div class="adm-card-title">🤝 สรุปรายละเอียดต่อ Affiliate</div>
+    <a href="/admin/affiliates" class="adm-btn adm-btn-ghost" style="font-size:.8rem">จัดการ Affiliates →</a>
+  </div>
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead><tr>
+        <th>Affiliate</th>
+        <th>Rate</th>
+        <th style="text-align:right">Leads</th>
+        <th style="text-align:right">Converted</th>
+        <th style="text-align:right">Click Rate</th>
+        <th style="text-align:right">Conv Rate</th>
+        <th style="text-align:right">ค้างจ่าย</th>
+        <th style="text-align:right">จ่ายแล้ว</th>
+      </tr></thead>
+      <tbody>
+        <% affBreakdown.forEach(a => { %>
+        <% const aClickRate = pct(a.clicks, a.total_leads) %>
+        <% const aConvRate  = pct(a.converted, a.total_leads) %>
+        <tr>
+          <td>
+            <div style="font-weight:600;color:#1e293b"><%= a.name %></div>
+            <div style="font-size:11px;color:#94a3b8;font-family:monospace">?aff=<%= a.slug %></div>
+          </td>
+          <td><span style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:600"><%= parseFloat(a.commission_rate).toFixed(1) %>%</span></td>
+          <td style="text-align:right;font-weight:600"><%= a.total_leads || 0 %></td>
+          <td style="text-align:right"><%= a.converted || 0 %></td>
+          <td style="text-align:right">
+            <span style="color:<%= aClickRate >= 20 ? '#059669' : aClickRate >= 10 ? '#f59e0b' : '#94a3b8' %>"><%= aClickRate %>%</span>
+          </td>
+          <td style="text-align:right">
+            <span style="color:<%= aConvRate >= 10 ? '#059669' : aConvRate >= 5 ? '#f59e0b' : '#94a3b8' %>"><%= aConvRate %>%</span>
+          </td>
+          <td style="text-align:right;color:#f59e0b;font-weight:600">
+            <% if (parseFloat(a.pending_commission||0) > 0) { %>฿<%= formatNumber(a.pending_commission) %><% } else { %><span style="color:#cbd5e1">-</span><% } %>
+          </td>
+          <td style="text-align:right;color:#059669;font-weight:600">
+            <% if (parseFloat(a.paid_commission||0) > 0) { %>฿<%= formatNumber(a.paid_commission) %><% } else { %><span style="color:#cbd5e1">-</span><% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr style="background:#f8fafc;font-weight:700">
+          <td colspan="2" style="color:#64748b;font-size:12px">รวมทั้งหมด</td>
+          <td style="text-align:right"><%= affBreakdown.reduce((s,a)=>s+(parseInt(a.total_leads)||0),0) %></td>
+          <td style="text-align:right"><%= affBreakdown.reduce((s,a)=>s+(parseInt(a.converted)||0),0) %></td>
+          <td colspan="2"></td>
+          <td style="text-align:right;color:#f59e0b">
+            <% const totalPending = affBreakdown.reduce((s,a)=>s+(parseFloat(a.pending_commission)||0),0) %>
+            <% if (totalPending > 0) { %>฿<%= formatNumber(totalPending.toFixed(0)) %><% } else { %>-<% } %>
+          </td>
+          <td style="text-align:right;color:#059669">
+            <% const totalPaid = affBreakdown.reduce((s,a)=>s+(parseFloat(a.paid_commission)||0),0) %>
+            <% if (totalPaid > 0) { %>฿<%= formatNumber(totalPaid.toFixed(0)) %><% } else { %>-<% } %>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+<% } %>
 
 <!-- RECENT LEADS -->
 <div class="adm-card adm-card-full">

@@ -22,6 +22,13 @@
       <option value="facebook_ads" <%= filters.source==='facebook_ads'?'selected':'' %>>Facebook Ads</option>
       <option value="google"       <%= filters.source==='google'?'selected':'' %>>Google</option>
     </select>
+    <% if (admin.role === 'superadmin') { %>
+    <select name="aff_filter">
+      <option value="">ทุก Leads</option>
+      <option value="direct" <%= filters.aff_filter==='direct'?'selected':'' %>>Direct (ไม่มี affiliate)</option>
+      <option value="affiliate" <%= filters.aff_filter==='affiliate'?'selected':'' %>>มี Affiliate</option>
+    </select>
+    <% } %>
     <button type="submit" class="adm-btn adm-btn-primary">ค้นหา</button>
     <a href="/admin/leads" class="adm-btn adm-btn-ghost">ล้าง</a>
   </form>
@@ -120,7 +127,7 @@
   <% if (totalPages > 1) { %>
     <div class="adm-pagination">
       <% for (let i=1; i<=totalPages; i++) { %>
-        <a href="?page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>"
+        <a href="?page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>&aff_filter=<%= filters.aff_filter||'' %>"
            class="adm-page-btn <%= page===i?'active':'' %>"><%= i %></a>
       <% } %>
     </div>

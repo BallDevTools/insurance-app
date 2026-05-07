@@ -203,7 +203,7 @@ module.exports = async function adminPlugin(fastify, opts) {
     const page   = Math.max(1, parseInt(req.query.page) || 1)
     const limit  = 20
     const offset = (page - 1) * limit
-    const { q = '', status = '', source = '', funnel_stage = '' } = req.query
+    const { q = '', status = '', source = '', funnel_stage = '', aff_filter = '' } = req.query
 
     const { extra, p: fp } = leadFilter(req.session.admin)
     let where = `WHERE 1=1 ${extra}`; const p = [...fp]
@@ -211,6 +211,8 @@ module.exports = async function adminPlugin(fastify, opts) {
     if (status)       { where += ' AND l.status=?'; p.push(status) }
     if (source)       { where += ' AND l.source=?'; p.push(source) }
     if (funnel_stage) { where += ' AND l.funnel_stage=?'; p.push(funnel_stage) }
+    if (aff_filter === 'direct')    { where += ' AND l.affiliate_id IS NULL' }
+    if (aff_filter === 'affiliate') { where += ' AND l.affiliate_id IS NOT NULL' }
 
     const [[{ total }]] = await db.query(
       `SELECT COUNT(*) AS total FROM leads l ${where}`, p
@@ -232,7 +234,7 @@ module.exports = async function adminPlugin(fastify, opts) {
     return av(reply, 'leads.ejs', {
       title: 'Leads ลูกค้า', activePage: 'leads', admin: req.session.admin,
       leads, total, page, totalPages: Math.ceil(total / limit),
-      filters: { q, status, source, funnel_stage }
+      filters: { q, status, source, funnel_stage, aff_filter }
     })
   })
 

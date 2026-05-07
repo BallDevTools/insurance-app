@@ -23,9 +23,9 @@
       <input type="text" name="phone" placeholder="08x-xxx-xxxx">
     </div>
     <div class="adm-settings-row">
-      <label>Commission Rate (%)</label>
-      <input type="number" name="commission_rate" value="0" min="0" max="100" step="0.1" style="max-width:120px">
-      <span class="adm-settings-hint">% ที่ต้องจ่ายให้ระบบ</span>
+      <label>Commission Rate</label>
+      <input type="number" name="commission_rate" value="0" min="0" max="100" step="0.01" placeholder="เช่น 30" style="max-width:120px" id="addRate" oninput="document.getElementById('addRateHint').textContent=parseFloat(this.value||0).toFixed(1)+'%'">
+      <span class="adm-settings-hint" id="addRateHint">0.0%</span>
     </div>
     <div style="padding:12px 0 4px">
       <button type="submit" class="adm-btn adm-btn-primary">เพิ่ม Affiliate</button>
@@ -130,8 +130,9 @@
         <input type="text" name="phone" id="editAffPhone">
       </div>
       <div class="adm-settings-row">
-        <label>Commission Rate (%)</label>
-        <input type="number" name="commission_rate" id="editAffRate" min="0" max="100" step="0.1" style="max-width:120px">
+        <label>Commission Rate</label>
+        <input type="number" name="commission_rate" id="editAffRate" min="0" max="100" step="0.01" placeholder="เช่น 30" style="max-width:120px" oninput="document.getElementById('editAffRateHint').textContent=parseFloat(this.value||0).toFixed(1)+'%'">
+        <span class="adm-settings-hint" id="editAffRateHint">0.0%</span>
       </div>
       <div style="margin-top:16px;display:flex;gap:8px">
         <button type="submit" class="adm-btn adm-btn-primary">บันทึก</button>
@@ -146,6 +147,7 @@ function openEditAff(a) {
   document.getElementById('editAffName').value = a.name
   document.getElementById('editAffPhone').value = a.phone || ''
   document.getElementById('editAffRate').value = a.commission_rate
+  document.getElementById('editAffRateHint').textContent = parseFloat(a.commission_rate||0).toFixed(1) + '%'
   document.getElementById('editAffModal').style.display = 'block'
 }
 </script>

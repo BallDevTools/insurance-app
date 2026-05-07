@@ -24,12 +24,27 @@
       </div>
       <div class="adm-form-group">
         <label>Role</label>
-        <select name="role">
-          <option value="agent">Agent (ทั่วไป)</option>
-          <option value="superadmin">Superadmin</option>
+        <select name="role" id="roleSelect" onchange="toggleAffSelect(this.value)">
+          <option value="agent">Staff (พนักงาน)</option>
+          <option value="superadmin">Superadmin (เจ้าของ)</option>
+          <option value="affiliate">Affiliate (พาร์ทเนอร์)</option>
+        </select>
+      </div>
+      <div class="adm-form-group" id="affSelectRow" style="display:none">
+        <label>เลือก Affiliate</label>
+        <select name="affiliate_id" required>
+          <option value="">-- เลือก --</option>
+          <% (locals.affiliates||[]).forEach(a => { %>
+            <option value="<%= a.id %>"><%= a.name %> (?aff=<%= a.slug %>)</option>
+          <% }) %>
         </select>
       </div>
       <button type="submit" class="adm-btn adm-btn-primary adm-btn-full">เพิ่ม Admin</button>
+      <script>
+      function toggleAffSelect(v) {
+        document.getElementById('affSelectRow').style.display = v === 'affiliate' ? '' : 'none'
+      }
+      </script>
     </form>
   </div>
 
@@ -44,7 +59,16 @@
             <tr>
               <td><strong><%= a.username %></strong></td>
               <td><%= a.full_name %></td>
-              <td><span class="adm-role-badge adm-role-<%= a.role %>"><%= a.role === 'superadmin' ? '⭐ Superadmin' : 'Agent' %></span></td>
+              <td>
+                <% if (a.role === 'superadmin') { %>
+                  <span class="adm-role-badge adm-role-superadmin">⭐ Superadmin</span>
+                <% } else if (a.role === 'affiliate') { %>
+                  <span class="adm-role-badge" style="background:#ede9fe;color:#6d28d9">🤝 Affiliate</span>
+                  <% if (a.aff_name) { %><div class="adm-sub" style="font-size:11px"><%= a.aff_name %></div><% } %>
+                <% } else { %>
+                  <span class="adm-role-badge adm-role-agent">Staff</span>
+                <% } %>
+              </td>
               <td class="adm-dt"><%= a.last_login ? new Date(a.last_login).toLocaleString('th-TH') : '-' %></td>
               <td>
                 <% if (String(a.id) !== String(admin.id)) { %>

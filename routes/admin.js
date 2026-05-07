@@ -195,9 +195,18 @@ module.exports = async function adminPlugin(fastify, opts) {
        FROM leads ${fWhere} ORDER BY created_at DESC LIMIT 10`, fp
     ).catch(() => [[]])
 
+    let affSlug = null
+    if (req.session.admin.role === 'affiliate' && req.session.admin.affiliate_id) {
+      const [[affRow]] = await db.query('SELECT slug FROM affiliates WHERE id=?', [req.session.admin.affiliate_id]).catch(() => [[null]])
+      affSlug = affRow?.slug || null
+    }
+
+    const appUrl = process.env.APP_URL || 'https://ins.dapp3.net'
+
     return av(reply, 'dashboard.ejs', {
       title: 'Dashboard', activePage: 'dashboard', admin: req.session.admin,
-      totals, typeBreakdown, dailyStats, topBrands, recentLeads
+      totals, typeBreakdown, dailyStats, topBrands, recentLeads,
+      affSlug, appUrl
     })
   })
 
@@ -294,10 +303,18 @@ module.exports = async function adminPlugin(fastify, opts) {
       affRows.forEach(r => { settings[r.key] = r.value })
     }
 
+    let affSlug = null
+    if (isAffiliate && affId) {
+      const [[affRow]] = await db.query('SELECT slug FROM affiliates WHERE id=?', [affId]).catch(() => [[null]])
+      affSlug = affRow?.slug || null
+    }
+    const appUrl = process.env.APP_URL || 'https://ins.dapp3.net'
+
     return av(reply, 'settings.ejs', {
       title: isAffiliate ? 'ตั้งค่าของฉัน' : 'ตั้งค่าระบบ',
       activePage: 'settings', admin,
-      settings, saved: req.query.saved === '1'
+      settings, saved: req.query.saved === '1',
+      affSlug, appUrl
     })
   })
 

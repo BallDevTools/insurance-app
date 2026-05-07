@@ -217,7 +217,7 @@ module.exports = async function adminPlugin(fastify, opts) {
     const page   = Math.max(1, parseInt(req.query.page) || 1)
     const limit  = 20
     const offset = (page - 1) * limit
-    const { q = '', status = '', source = '', funnel_stage = '', aff_filter = '' } = req.query
+    const { q = '', status = '', source = '', funnel_stage = '', aff_filter = '', aff_id = '' } = req.query
 
     const { extra, p: fp } = leadFilter(req.session.admin)
     let where = `WHERE 1=1 ${extra}`; const p = [...fp]
@@ -227,6 +227,7 @@ module.exports = async function adminPlugin(fastify, opts) {
     if (funnel_stage) { where += ' AND l.funnel_stage=?'; p.push(funnel_stage) }
     if (aff_filter === 'direct')    { where += ' AND l.affiliate_id IS NULL' }
     if (aff_filter === 'affiliate') { where += ' AND l.affiliate_id IS NOT NULL' }
+    if (aff_id)       { where += ' AND l.affiliate_id=?'; p.push(parseInt(aff_id)) }
 
     const [[{ total }]] = await db.query(
       `SELECT COUNT(*) AS total FROM leads l ${where}`, p
@@ -248,7 +249,7 @@ module.exports = async function adminPlugin(fastify, opts) {
     return av(reply, 'leads.ejs', {
       title: 'Leads ลูกค้า', activePage: 'leads', admin: req.session.admin,
       leads, total, page, totalPages: Math.ceil(total / limit),
-      filters: { q, status, source, funnel_stage, aff_filter }
+      filters: { q, status, source, funnel_stage, aff_filter, aff_id }
     })
   })
 
@@ -623,11 +624,36 @@ module.exports = async function adminPlugin(fastify, opts) {
   fastify.post('/affiliates/:id/pay-all', async (req, reply) => {
     if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
     await db.query(
-      'UPDATE leads SET commission_paid=1 WHERE affiliate_id=? AND commission_amount IS NOT NULL AND commission_paid=0',
+      'UPDATE leads SET commission_paid=1, commission_paid_at=NOW() WHERE affiliate_id=? AND commission_amount IS NOT NULL AND commission_paid=0',
       [req.params.id]
     )
-    await audit.log(req.session.admin?.username, 'pay_commission', 'affiliates', req.params.id, 'Mark paid commission', req.ip)
+    await audit.log(req.session.admin?.username, 'pay_commission', 'affiliates', req.params.id, 'Mark paid all commission', req.ip)
     return reply.redirect('/admin/affiliates?msg=paid')
+  })
+
+  fastify.post('/affiliates/:id/pay-lead/:leadId', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.code(403).send({ error: 'forbidden' })
+    const affId  = parseInt(req.params.id)
+    const leadId = parseInt(req.params.leadId)
+    await db.query(
+      'UPDATE leads SET commission_paid=1, commission_paid_at=NOW() WHERE id=? AND affiliate_id=? AND commission_paid=0',
+      [leadId, affId]
+    )
+    await audit.log(req.session.admin?.username, 'pay_commission_lead', 'leads', leadId, `Mark paid lead #${leadId}`, req.ip)
+    return reply.send({ ok: true })
+  })
+
+  fastify.get('/api/affiliates/:id/commission', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.code(403).send({ error: 'forbidden' })
+    const [rows] = await db.query(
+      `SELECT l.id, l.name, l.phone, l.brand, l.model, l.year, l.insurance_type,
+              l.best_price, l.commission_amount, l.commission_paid, l.commission_paid_at, l.status, l.created_at
+       FROM leads l
+       WHERE l.affiliate_id=? AND l.commission_amount IS NOT NULL
+       ORDER BY l.commission_paid ASC, l.created_at DESC`,
+      [req.params.id]
+    ).catch(() => [[]])
+    return reply.send(rows)
   })
 
   // ============================================================

@@ -1,0 +1,2 @@
+ALTER TABLE leads
+  ADD COLUMN commission_paid_at TIMESTAMP NULL DEFAULT NULL;

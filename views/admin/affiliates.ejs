@@ -71,7 +71,10 @@
             <td><%= a.converted_leads || 0 %></td>
             <td class="adm-money" style="color:#f59e0b">
               <% if (parseFloat(a.pending_commission||0) > 0) { %>
-                ฿<%= formatNumber(a.pending_commission) %>
+                <button type="button" onclick="openCommission(<%= a.id %>, '<%= a.name %>')"
+                  style="background:none;border:none;cursor:pointer;color:#f59e0b;font-weight:700;font-size:13px;padding:0;text-decoration:underline dotted">
+                  ฿<%= formatNumber(a.pending_commission) %>
+                </button>
               <% } else { %>-<% } %>
             </td>
             <td class="adm-money" style="color:#059669">
@@ -102,7 +105,7 @@
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button type="submit" class="adm-btn adm-btn-ghost adm-btn-sm" style="font-size:11px;width:100%"><%= a.is_active ? 'ปิดการใช้' : 'เปิดการใช้' %></button>
                 </form>
-                <a href="/admin/leads?aff=<%= a.slug %>" class="adm-btn adm-btn-ghost adm-btn-sm" style="font-size:11px;text-align:center">ดู Leads</a>
+                <a href="/admin/leads?aff_id=<%= a.id %>" class="adm-btn adm-btn-ghost adm-btn-sm" style="font-size:11px;text-align:center">ดู Leads</a>
               </div>
             </td>
           </tr>
@@ -150,4 +153,159 @@ function openEditAff(a) {
   document.getElementById('editAffRateHint').textContent = parseFloat(a.commission_rate||0).toFixed(1) + '%'
   document.getElementById('editAffModal').style.display = 'block'
 }
+</script>
+
+<!-- COMMISSION DETAIL MODAL -->
+<div id="commModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto">
+  <div style="max-width:680px;margin:40px auto 80px;background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden">
+    <div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:20px 24px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;color:rgba(255,255,255,.7);font-weight:600;letter-spacing:.5px;text-transform:uppercase">Commission</div>
+        <div id="commModalTitle" style="font-size:18px;font-weight:700;color:#fff;margin-top:2px"></div>
+      </div>
+      <button onclick="closeCommModal()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;line-height:1">×</button>
+    </div>
+    <div style="padding:20px 24px">
+      <div id="commSummaryBar" style="display:flex;gap:16px;margin-bottom:16px"></div>
+      <div id="commList" style="font-size:13px"></div>
+      <div id="commPayAllWrap" style="margin-top:16px;display:none">
+        <form id="commPayAllForm" method="POST" onsubmit="return confirmPayAll()">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" style="background:#059669;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;width:100%">
+            ✅ Mark All Paid (ทั้งหมดที่ค้างจ่าย)
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.comm-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.comm-row:last-child{border-bottom:none}
+.comm-car{flex:1;min-width:0}
+.comm-car .car-name{font-weight:600;color:#1e293b}
+.comm-car .car-sub{font-size:11px;color:#94a3b8;margin-top:1px}
+.comm-price{text-align:right;min-width:90px}
+.comm-price .amount{font-weight:700;color:#f59e0b;font-size:14px}
+.comm-price .paid-amount{font-weight:700;color:#059669;font-size:14px}
+.comm-price .sub{font-size:10px;color:#94a3b8}
+.comm-pay-btn{background:#059669;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.comm-pay-btn:hover{opacity:.9}
+.comm-paid-badge{background:#dcfce7;color:#166534;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+.comm-stat{background:#f8fafc;border-radius:8px;padding:10px 14px;flex:1;text-align:center}
+.comm-stat .val{font-size:18px;font-weight:700}
+.comm-stat .lbl{font-size:11px;color:#94a3b8;margin-top:2px}
+</style>
+
+<script>
+let _currentAffId = null
+
+async function openCommission(affId, affName) {
+  _currentAffId = affId
+  document.getElementById('commModal').style.display = 'block'
+  document.getElementById('commModalTitle').textContent = affName
+  document.getElementById('commList').innerHTML = '<div style="color:#94a3b8;padding:20px 0;text-align:center">กำลังโหลด...</div>'
+  document.getElementById('commSummaryBar').innerHTML = ''
+  document.getElementById('commPayAllWrap').style.display = 'none'
+
+  try {
+    const r = await fetch(`/admin/api/affiliates/${affId}/commission`)
+    const rows = await r.json()
+    renderCommission(affId, rows)
+  } catch(e) {
+    document.getElementById('commList').innerHTML = '<div style="color:#ef4444">โหลดข้อมูลไม่สำเร็จ</div>'
+  }
+}
+
+function renderCommission(affId, rows) {
+  const pending = rows.filter(r => !r.commission_paid)
+  const paid    = rows.filter(r => r.commission_paid)
+  const totalPending = pending.reduce((s, r) => s + parseFloat(r.commission_amount), 0)
+  const totalPaid    = paid.reduce((s, r) => s + parseFloat(r.commission_amount), 0)
+
+  const fmt = n => Number(n).toLocaleString('th-TH', {minimumFractionDigits: 0})
+  const TYPE_MAP = {class1:'ชั้น 1',class2plus:'ชั้น 2+',class3plus:'ชั้น 3+',compulsory:'พรบ.'}
+
+  // Summary bar
+  document.getElementById('commSummaryBar').innerHTML = `
+    <div class="comm-stat"><div class="val" style="color:#f59e0b">฿${fmt(totalPending)}</div><div class="lbl">⏳ ค้างจ่าย (${pending.length} รายการ)</div></div>
+    <div class="comm-stat"><div class="val" style="color:#059669">฿${fmt(totalPaid)}</div><div class="lbl">✅ จ่ายแล้ว (${paid.length} รายการ)</div></div>
+  `
+
+  if (!rows.length) {
+    document.getElementById('commList').innerHTML = '<div style="color:#94a3b8;padding:20px 0;text-align:center">ยังไม่มี commission</div>'
+    return
+  }
+
+  const listHtml = rows.map(r => {
+    const carName = [r.brand, r.model, r.year ? `ปี${r.year}` : ''].filter(Boolean).join(' ')
+    const type    = TYPE_MAP[r.insurance_type] || r.insurance_type
+    const custName = r.name || 'ไม่ระบุชื่อ'
+    const date    = new Date(r.created_at).toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'2-digit'})
+
+    if (r.commission_paid) {
+      const paidDate = r.commission_paid_at ? new Date(r.commission_paid_at).toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'2-digit'}) : '-'
+      return `<div class="comm-row">
+        <div class="comm-car">
+          <div class="car-name">${carName} · ${type}</div>
+          <div class="car-sub">${custName}${r.phone ? ' · ' + r.phone : ''} · ${date}</div>
+        </div>
+        <div class="comm-price">
+          <div class="paid-amount">฿${fmt(r.commission_amount)}</div>
+          <div class="sub">จากเบี้ย ฿${fmt(r.best_price)}</div>
+        </div>
+        <span class="comm-paid-badge">✓ จ่ายแล้ว<br><span style="font-weight:400;font-size:10px">${paidDate}</span></span>
+      </div>`
+    } else {
+      return `<div class="comm-row" id="crow-${r.id}">
+        <div class="comm-car">
+          <div class="car-name">${carName} · ${type}</div>
+          <div class="car-sub">${custName}${r.phone ? ' · ' + r.phone : ''} · ${date}</div>
+        </div>
+        <div class="comm-price">
+          <div class="amount">฿${fmt(r.commission_amount)}</div>
+          <div class="sub">จากเบี้ย ฿${fmt(r.best_price)}</div>
+        </div>
+        <button class="comm-pay-btn" onclick="payLead(${affId}, ${r.id}, ${r.commission_amount})">Mark Paid</button>
+      </div>`
+    }
+  }).join('')
+
+  document.getElementById('commList').innerHTML = listHtml
+
+  if (pending.length > 0) {
+    document.getElementById('commPayAllForm').action = `/admin/affiliates/${affId}/pay-all`
+    document.getElementById('commPayAllWrap').style.display = 'block'
+  }
+}
+
+async function payLead(affId, leadId, amount) {
+  if (!confirm(`Mark paid ฿${Number(amount).toLocaleString('th-TH')} รายการนี้?`)) return
+  const r = await fetch(`/admin/affiliates/${affId}/pay-lead/${leadId}`, { method: 'POST' })
+  if (r.ok) {
+    const row = document.getElementById(`crow-${leadId}`)
+    if (row) {
+      row.querySelector('.comm-pay-btn').replaceWith(Object.assign(document.createElement('span'), {
+        className: 'comm-paid-badge', innerHTML: '✓ จ่ายแล้ว'
+      }))
+      row.querySelector('.amount')?.classList.replace('amount', 'paid-amount')
+    }
+    // reload full list to update summary
+    const rows = await (await fetch(`/admin/api/affiliates/${affId}/commission`)).json()
+    renderCommission(affId, rows)
+  }
+}
+
+function confirmPayAll() {
+  return confirm('Mark paid commission ทั้งหมดที่ค้างจ่ายของ affiliate นี้?')
+}
+
+function closeCommModal() {
+  document.getElementById('commModal').style.display = 'none'
+  _currentAffId = null
+}
+document.getElementById('commModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCommModal()
+})
 </script>

@@ -1,0 +1,6 @@
+require('dotenv').config()
+const db = require('./db')
+db.query('ALTER TABLE app_settings DROP PRIMARY KEY, ADD COLUMN affiliate_id INT NOT NULL DEFAULT 0 AFTER `key`, ADD PRIMARY KEY (`key`,affiliate_id)')
+  .then(() => console.log('migration ok'))
+  .catch(e => console.log('skip:', e.message))
+  .finally(() => process.exit())

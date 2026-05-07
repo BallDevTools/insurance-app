@@ -1,71 +1,18 @@
+<% const isAffiliate = admin.role === 'affiliate' %>
 <% if (saved) { %><div class="adm-alert adm-alert-success">✅ บันทึกการตั้งค่าเรียบร้อย</div><% } %>
 
 <form action="/admin/settings" method="POST">
 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 <div class="adm-settings-grid">
 
-  <!-- Insurance Rates -->
-  <div class="adm-card">
-    <div class="adm-card-title">💰 อัตราเบี้ยประกัน</div>
-    <div class="adm-settings-note">อัตราคิดเป็น % ของมูลค่ารถ (เช่น 0.042 = 4.2%)</div>
-
-    <div class="adm-settings-section">
-      <div class="adm-settings-header adm-type-class1-bg">ประกันชั้น 1</div>
-      <div class="adm-settings-row">
-        <label>อัตราเบี้ย (%)</label>
-        <input type="number" name="class1_rate" value="<%= settings.class1_rate||'0.042' %>" step="0.001" min="0.001" max="0.2">
-        <span class="adm-settings-hint"><%= ((parseFloat(settings.class1_rate||0.042))*100).toFixed(1) %>%</span>
-      </div>
-      <div class="adm-settings-row">
-        <label>เบี้ยขั้นต่ำ (บาท)</label>
-        <input type="number" name="class1_min" value="<%= settings.class1_min||'12000' %>" step="500" min="0">
-      </div>
-    </div>
-
-    <div class="adm-settings-section">
-      <div class="adm-settings-header adm-type-class2plus-bg">ประกันชั้น 2+</div>
-      <div class="adm-settings-row">
-        <label>อัตราเบี้ย (%)</label>
-        <input type="number" name="class2plus_rate" value="<%= settings.class2plus_rate||'0.022' %>" step="0.001" min="0.001" max="0.2">
-        <span class="adm-settings-hint"><%= ((parseFloat(settings.class2plus_rate||0.022))*100).toFixed(1) %>%</span>
-      </div>
-      <div class="adm-settings-row">
-        <label>เบี้ยขั้นต่ำ (บาท)</label>
-        <input type="number" name="class2plus_min" value="<%= settings.class2plus_min||'7000' %>" step="500" min="0">
-      </div>
-    </div>
-
-    <div class="adm-settings-section">
-      <div class="adm-settings-header adm-type-class3plus-bg">ประกันชั้น 3+</div>
-      <div class="adm-settings-row">
-        <label>อัตราเบี้ย (%)</label>
-        <input type="number" name="class3plus_rate" value="<%= settings.class3plus_rate||'0.010' %>" step="0.001" min="0.001" max="0.2">
-        <span class="adm-settings-hint"><%= ((parseFloat(settings.class3plus_rate||0.010))*100).toFixed(1) %>%</span>
-      </div>
-      <div class="adm-settings-row">
-        <label>เบี้ยขั้นต่ำ (บาท)</label>
-        <input type="number" name="class3plus_min" value="<%= settings.class3plus_min||'3500' %>" step="500" min="0">
-      </div>
-    </div>
-  </div>
-
-  <!-- Site Info -->
-  <div class="adm-card">
-    <div class="adm-card-title">🏢 ข้อมูลติดต่อเว็บไซต์</div>
-    <div class="adm-settings-row">
-      <label>เบอร์โทรสายด่วน</label>
-      <input type="text" name="site_phone" value="<%= settings.site_phone||'' %>" placeholder="02-xxx-xxxx">
-    </div>
-    <div class="adm-settings-row">
-      <label>อีเมลติดต่อ</label>
-      <input type="email" name="site_email" value="<%= settings.site_email||'' %>" placeholder="info@...">
-    </div>
-  </div>
-
-  <!-- LINE OA + Facebook CTA URLs -->
+  <!-- CTA URLs + Phone — ทั้ง superadmin และ affiliate -->
   <div class="adm-card">
     <div class="adm-card-title">📲 ช่องทาง CTA (ปุ่มในหน้า Result)</div>
+    <% if (isAffiliate) { %>
+    <div class="adm-settings-note">ค่าที่ตั้งไว้จะแสดงให้ลูกค้าของคุณโดยเฉพาะ ถ้าว่างไว้จะใช้ค่ากลางของระบบ</div>
+    <% } else { %>
     <div class="adm-settings-note">URL ที่ลูกค้าจะถูก redirect ไปเมื่อกดปุ่ม LINE หรือ Facebook</div>
+    <% } %>
     <div class="adm-settings-row">
       <label>LINE OA URL</label>
       <input type="url" name="line_oa_url" value="<%= settings.line_oa_url||'' %>" placeholder="https://line.me/R/ti/p/@...">
@@ -74,23 +21,43 @@
       <label>Facebook URL</label>
       <input type="url" name="facebook_url" value="<%= settings.facebook_url||'' %>" placeholder="https://m.me/...">
     </div>
+    <div class="adm-settings-row">
+      <label>เบอร์โทรสายด่วน</label>
+      <input type="text" name="site_phone" value="<%= settings.site_phone||'' %>" placeholder="02-xxx-xxxx">
+    </div>
   </div>
 
-  <!-- LINE Admin Notify -->
+  <!-- GTM / GA4 Code — ทั้ง superadmin และ affiliate -->
   <div class="adm-card">
-    <div class="adm-card-title">🔔 แจ้งเตือน Lead ใหม่ (LINE)</div>
-    <div class="adm-settings-note">LINE User ID ของเจ้าหน้าที่ที่จะรับแจ้งเตือนเมื่อมี lead ใหม่</div>
+    <div class="adm-card-title">📊 Google Tag Manager / GA4</div>
+    <div class="adm-settings-note">วาง GTM snippet หรือ GA4 gtag ตรงนี้ได้เลย ใส่หรือไม่ใส่ก็ได้</div>
+    <div class="adm-settings-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <label style="margin-bottom:2px">&lt;head&gt; Code <span style="font-size:11px;color:#94a3b8">(GTM head snippet / gtag.js)</span></label>
+      <textarea name="gtm_head_code" rows="5" placeholder="<!-- Google Tag Manager -->&#10;<script>...</script>" style="width:100%;font-family:monospace;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:8px;resize:vertical"><%= settings.gtm_head_code||'' %></textarea>
+    </div>
+    <div class="adm-settings-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:8px">
+      <label style="margin-bottom:2px">&lt;body&gt; Code <span style="font-size:11px;color:#94a3b8">(GTM noscript / optional)</span></label>
+      <textarea name="gtm_body_code" rows="3" placeholder="<!-- Google Tag Manager (noscript) -->&#10;<noscript>...</noscript>" style="width:100%;font-family:monospace;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:8px;resize:vertical"><%= settings.gtm_body_code||'' %></textarea>
+    </div>
+  </div>
+
+  <% if (!isAffiliate) { %>
+
+  <!-- Site Email — superadmin only -->
+  <div class="adm-card">
+    <div class="adm-card-title">🏢 ข้อมูลเพิ่มเติม</div>
+    <div class="adm-settings-row">
+      <label>อีเมลติดต่อ</label>
+      <input type="email" name="site_email" value="<%= settings.site_email||'' %>" placeholder="info@...">
+    </div>
     <div class="adm-settings-row">
       <label>LINE Admin User ID</label>
       <input type="text" name="line_admin_user_id" value="<%= settings.line_admin_user_id||'' %>" placeholder="Uxxxxxxxxxx...">
-    </div>
-    <div class="adm-settings-note" style="color:#6b7280;font-size:0.8rem">
-      ดู User ID ได้จาก LINE Developers Console หรือ Webhook event → source.userId
+      <span class="adm-settings-hint" style="font-size:11px">รับแจ้งเตือน lead ใหม่</span>
     </div>
   </div>
 
-
-  <!-- Commission Settings -->
+  <!-- Commission Settings — superadmin only -->
   <div class="adm-card">
     <div class="adm-card-title">🤝 Commission Mode (Affiliate)</div>
     <div class="adm-settings-note">เลือกว่า commission คิดจากอะไร — ใช้กับ affiliate ทุกคน</div>
@@ -112,7 +79,7 @@
     <div class="adm-settings-row" id="brokerFeeRow" style="<%= settings.commission_base === 'broker_fee' ? '' : 'display:none' %>">
       <label>Broker Fee Rate (%)</label>
       <input type="number" name="broker_fee_rate" value="<%= settings.broker_fee_rate || '15' %>" min="0" max="100" step="0.1" style="max-width:120px">
-      <span class="adm-settings-hint">% ที่ affiliate ได้จากเบี้ยประกัน</span>
+      <span class="adm-settings-hint">% ของเบี้ยประกัน</span>
     </div>
     <div class="adm-settings-note" style="color:#6b7280;font-size:0.78rem">
       Premium: commission = เบี้ย × rate% affiliate<br>
@@ -120,10 +87,10 @@
     </div>
   </div>
 
-  <!-- Theme Colors -->
+  <!-- Theme Colors — superadmin only -->
   <div class="adm-card">
     <div class="adm-card-title">🎨 ธีม / สีระบบ</div>
-    <div class="adm-settings-note">ปรับสีหลังบ้านได้ตามต้องการ การเปลี่ยนแปลงมีผลทันทีหลังบันทึก</div>
+    <div class="adm-settings-note">ปรับสีหลังบ้านได้ตามต้องการ</div>
     <div class="adm-settings-row">
       <label>สี Sidebar</label>
       <input type="color" name="theme_sidebar_bg" value="<%= settings.theme_sidebar_bg || '#0f172a' %>" class="adm-color-input">
@@ -150,6 +117,8 @@
     </div>
   </div>
 
+  <% } %>
+
 </div>
 
 <div class="adm-settings-footer">
@@ -158,12 +127,14 @@
 </form>
 <script>
 ;(function() {
-  // Commission mode toggle
-  document.querySelectorAll('input[name="commission_base"]').forEach(r => {
-    r.addEventListener('change', () => {
-      document.getElementById('brokerFeeRow').style.display = r.value === 'broker_fee' ? '' : 'none'
+  const brokerRow = document.getElementById('brokerFeeRow')
+  if (brokerRow) {
+    document.querySelectorAll('input[name="commission_base"]').forEach(r => {
+      r.addEventListener('change', () => {
+        brokerRow.style.display = r.value === 'broker_fee' ? '' : 'none'
+      })
     })
-  })
+  }
 
   const pairs = [
     ['theme_sidebar_bg', 'prev_sidebar', 'swatch_sidebar'],
@@ -174,7 +145,7 @@
     const inp = document.querySelector(`input[name="${name}"]`)
     const prev = document.getElementById(prevId)
     const swatch = document.getElementById(swatchId)
-    if (!inp) return
+    if (!inp || !prev) return
     inp.addEventListener('input', () => {
       prev.textContent = inp.value
       swatch.style.background = inp.value

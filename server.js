@@ -34,6 +34,21 @@ async function resolveAffiliate(req) {
   return aff?.id || null
 }
 
+async function getPublicSettings(affiliateId = 0) {
+  const [global] = await db.query(
+    'SELECT `key`, `value` FROM app_settings WHERE affiliate_id = 0'
+  ).catch(() => [[]])
+  const s = {}
+  global.forEach(r => { s[r.key] = r.value })
+  if (affiliateId) {
+    const [aff] = await db.query(
+      'SELECT `key`, `value` FROM app_settings WHERE affiliate_id = ?', [affiliateId]
+    ).catch(() => [[]])
+    aff.forEach(r => { s[r.key] = r.value })
+  }
+  return s
+}
+
 // =============================================
 // Plugins
 // =============================================
@@ -136,15 +151,16 @@ fastify.get('/', async (req, reply) => {
   for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
   const csrfToken = genCsrf(req)
 
-  const [[lineRow]] = await db.query(
-    "SELECT value FROM app_settings WHERE `key`='line_oa_url'"
-  ).catch(() => [[null]])
-  const lineOaUrl = lineRow?.value || null
+  const affiliateId = await resolveAffiliate(req)
+  const pub = await getPublicSettings(affiliateId)
 
   return reply.view('index.ejs', {
     title: 'คำนวณเบี้ยประกันรถยนต์',
     brands, years, errors: {}, old: {},
-    utm: req.session.utm || {}, csrfToken, lineOaUrl
+    utm: req.session.utm || {}, csrfToken,
+    lineOaUrl: pub.line_oa_url || null,
+    gtmHeadCode: pub.gtm_head_code || '',
+    gtmBodyCode: pub.gtm_body_code || ''
   }, { layout: PUB_LAYOUT })
 })
 
@@ -411,18 +427,16 @@ fastify.get('/result/:token', async (req, reply) => {
     } catch {}
   }
 
-  // CTA URLs จาก settings
-  const [settingRows] = await db.query(
-    "SELECT `key`, `value` FROM app_settings WHERE `key` IN ('line_oa_url','facebook_url')"
-  ).catch(() => [[]])
-  const settings = {}
-  settingRows.forEach(r => { settings[r.key] = r.value })
+  const pub = await getPublicSettings(lead.affiliate_id || 0)
 
   return reply.view('result.ejs', {
     title: 'ราคาประกันรถยนต์ของคุณ',
     lead, insuranceConfig, packages, formatNumber,
-    lineOaUrl:   settings.line_oa_url   || '#',
-    facebookUrl: settings.facebook_url  || '#'
+    lineOaUrl:   pub.line_oa_url   || '#',
+    facebookUrl: pub.facebook_url  || '#',
+    sitePhone:   pub.site_phone    || null,
+    gtmHeadCode: pub.gtm_head_code || '',
+    gtmBodyCode: pub.gtm_body_code || ''
   }, { layout: PUB_LAYOUT })
 })
 

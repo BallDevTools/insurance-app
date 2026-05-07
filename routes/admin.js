@@ -35,7 +35,7 @@ async function calcCommission(leadId) {
   if (!lead?.affiliate_id || !lead?.best_price || lead.commission_amount) return
 
   const [sRows] = await db.query(
-    "SELECT `key`,`value` FROM app_settings WHERE `key` IN ('commission_base','broker_fee_rate')"
+    "SELECT `key`,`value` FROM app_settings WHERE `key` IN ('commission_base','broker_fee_rate') AND affiliate_id=0"
   ).catch(() => [[]])
   const s = {}; sRows.forEach(r => { s[r.key] = r.value })
 
@@ -84,12 +84,13 @@ module.exports = async function adminPlugin(fastify, opts) {
     // Affiliate: เข้าได้เฉพาะ dashboard + leads
     if (req.session.admin.role === 'affiliate') {
       const p = req.url.split('?')[0]
-      const ok = p === '/admin' || p.startsWith('/admin/leads') || p.startsWith('/admin/api/')
+      const ok = p === '/admin' || p === '/admin/logout' || p === '/admin/settings' ||
+                 p.startsWith('/admin/leads') || p.startsWith('/admin/api/')
       if (!ok) return reply.redirect('/admin/leads')
     }
     // Fetch theme settings for layout CSS vars
     const [themeRows] = await db.query(
-      "SELECT `key`, `value` FROM app_settings WHERE `key` LIKE 'theme_%'"
+      "SELECT `key`, `value` FROM app_settings WHERE `key` LIKE 'theme_%' AND affiliate_id = 0"
     ).catch(() => [[]])
     req.themeSettings = themeRows.reduce((acc, r) => { acc[r.key] = r.value; return acc }, {})
   })
@@ -128,7 +129,11 @@ module.exports = async function adminPlugin(fastify, opts) {
     if (!valid) return await fail('Username หรือ Password ไม่ถูกต้อง')
 
     await db.query('UPDATE admin_users SET last_login = NOW() WHERE id = ?', [rows[0].id])
-    req.session.admin = { id: rows[0].id, username: rows[0].username, full_name: rows[0].full_name, role: rows[0].role }
+    req.session.admin = {
+      id: rows[0].id, username: rows[0].username,
+      full_name: rows[0].full_name, role: rows[0].role,
+      affiliate_id: rows[0].affiliate_id || null
+    }
     return reply.redirect('/admin')
   })
 
@@ -274,27 +279,46 @@ module.exports = async function adminPlugin(fastify, opts) {
   // SETTINGS
   // ============================================================
   fastify.get('/settings', async (req, reply) => {
-    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
-    const [rows] = await db.query('SELECT * FROM app_settings')
+    const admin = req.session.admin
+    const isAffiliate = admin.role === 'affiliate'
+    const affId = isAffiliate ? (admin.affiliate_id || 0) : 0
+
+    // Global settings
+    const [globalRows] = await db.query('SELECT `key`, `value` FROM app_settings WHERE affiliate_id = 0').catch(() => [[]])
     const settings = {}
-    rows.forEach(r => { settings[r.key] = r.value })
+    globalRows.forEach(r => { settings[r.key] = r.value })
+
+    // Affiliate override (merge on top of global)
+    if (isAffiliate && affId) {
+      const [affRows] = await db.query('SELECT `key`, `value` FROM app_settings WHERE affiliate_id = ?', [affId]).catch(() => [[]])
+      affRows.forEach(r => { settings[r.key] = r.value })
+    }
+
     return av(reply, 'settings.ejs', {
-      title: 'ตั้งค่าระบบ', activePage: 'settings', admin: req.session.admin,
+      title: isAffiliate ? 'ตั้งค่าของฉัน' : 'ตั้งค่าระบบ',
+      activePage: 'settings', admin,
       settings, saved: req.query.saved === '1'
     })
   })
 
   fastify.post('/settings', async (req, reply) => {
-    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
-    const keys = ['class1_rate','class1_min','class2plus_rate','class2plus_min','class3plus_rate','class3plus_min',
-                   'site_phone','site_email','line_oa_url','facebook_url','line_admin_user_id',
-                   'theme_sidebar_bg','theme_accent','theme_content_bg',
-                   'commission_base','broker_fee_rate']
+    const admin = req.session.admin
+    const isAffiliate = admin.role === 'affiliate'
+    if (!isAffiliate && admin.role !== 'superadmin') return reply.redirect('/admin')
+
+    const affId = isAffiliate ? (admin.affiliate_id || 0) : 0
+
+    const superKeys = ['site_phone','site_email','line_oa_url','facebook_url','line_admin_user_id',
+                       'theme_sidebar_bg','theme_accent','theme_content_bg',
+                       'commission_base','broker_fee_rate','gtm_head_code','gtm_body_code']
+    const affKeys   = ['line_oa_url','facebook_url','site_phone','gtm_head_code','gtm_body_code']
+    const keys = isAffiliate ? affKeys : superKeys
+
     for (const k of keys) {
       if (req.body[k] !== undefined) {
         await db.query(
-          'INSERT INTO app_settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=?',
-          [k, req.body[k], req.body[k]]
+          'INSERT INTO app_settings (`key`, `affiliate_id`, `value`) VALUES (?,?,?) ON DUPLICATE KEY UPDATE `value`=?',
+          [k, affId, req.body[k], req.body[k]]
         )
       }
     }

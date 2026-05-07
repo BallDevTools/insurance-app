@@ -8,6 +8,10 @@ const PRIVATE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|fd)/
 async function lookupIp(ip) {
   if (!ip || PRIVATE.test(ip)) return null
 
+  // check global rate-limit backoff
+  const rl = cache.get('__ratelimit__')
+  if (rl && Date.now() - rl.ts < CACHE_TTL) return null
+
   const cached = cache.get(ip)
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data
 
@@ -19,6 +23,12 @@ async function lookupIp(ip) {
       `http://ip-api.com/json/${ip}?fields=status,country,city,isp,mobile,proxy`,
       { signal: ctrl.signal }
     )
+    if (res.status === 429) {
+      // rate limited — cache null for 2 minutes to back off
+      cache.set('__ratelimit__', { data: null, ts: Date.now() - CACHE_TTL + 120000 })
+      cache.set(ip, { data: null, ts: Date.now() - CACHE_TTL + 120000 })
+      return null
+    }
     const data = await res.json()
     if (data.status !== 'success') return null
 

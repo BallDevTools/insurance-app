@@ -1,7 +1,13 @@
 <!-- FILTER -->
 <div class="adm-card adm-filter-card">
   <form action="/admin/leads" method="GET" class="adm-filter-form">
-    <input type="text" name="q" value="<%= filters.q %>" placeholder="🔍 ค้นหา ชื่อ / เบอร์ / ยี่ห้อ / ทะเบียน">
+    <input type="text" name="q" value="<%= filters.q %>" placeholder="🔍 ค้นหา ชื่อ / เบอร์ / ยี่ห้อ">
+    <select name="funnel_stage">
+      <option value="">ทุก Stage</option>
+      <option value="cold" <%= filters.funnel_stage==='cold'?'selected':'' %>>👀 แวะดู</option>
+      <option value="warm" <%= filters.funnel_stage==='warm'?'selected':'' %>>🤔 กำลังคิด</option>
+      <option value="hot"  <%= filters.funnel_stage==='hot'?'selected':'' %>>💰 พร้อมซื้อ</option>
+    </select>
     <select name="status">
       <option value="">ทุกสถานะ</option>
       <option value="new"       <%= filters.status==='new'?'selected':'' %>>ใหม่</option>
@@ -32,20 +38,26 @@
         <th>รถ / ประกัน</th>
         <th>ราคา</th>
         <th>ลูกค้า</th>
+        <th>Stage</th>
         <th>CTA</th>
         <th>แหล่ง</th>
         <th>สถานะ</th>
+        <% if (admin.role === 'superadmin') { %><th>Commission</th><% } %>
         <th>วันที่</th>
         <th>Action</th>
       </tr></thead>
       <tbody>
         <% if (!leads.length) { %>
-          <tr><td colspan="8" class="adm-empty-cell">ไม่พบข้อมูล</td></tr>
+          <tr><td colspan="9" class="adm-empty-cell">ไม่พบข้อมูล</td></tr>
         <% } %>
+        <% const FUNNEL_MAP = { cold:'👀 แวะดู', warm:'🤔 กำลังคิด', hot:'💰 พร้อมซื้อ' } %>
         <% leads.forEach(l=>{ %>
           <tr>
             <td>
-              <div><strong><%= l.brand %> <%= l.model %></strong></div>
+              <div>
+                <strong><%= l.brand %> <%= l.model %></strong>
+                <% if (l.lead_type === 'concierge') { %><span class="adm-concierge-badge">📞 ให้โทรกลับ</span><% } %>
+              </div>
               <div class="adm-sub">ปี <%= l.year %> · <%= l.province %></div>
               <div><span class="adm-type-pill adm-type-<%= l.insurance_type %>"><%= TYPE_MAP[l.insurance_type] %></span></div>
             </td>
@@ -57,6 +69,11 @@
               <% if (l.phone) { %><div><a href="tel:<%= l.phone %>" class="adm-phone"><%= l.phone %></a></div><% } %>
             </td>
             <td>
+              <span class="adm-funnel-badge adm-funnel-<%= l.funnel_stage || 'hot' %>">
+                <%= FUNNEL_MAP[l.funnel_stage] || '💰 พร้อมซื้อ' %>
+              </span>
+            </td>
+            <td>
               <% if (l.clicked_line) { %><span class="adm-click-badge adm-click-line" title="คลิก LINE">LINE ✓</span> <% } %>
               <% if (l.clicked_facebook) { %><span class="adm-click-badge adm-click-fb" title="คลิก Facebook">FB ✓</span><% } %>
               <% if (!l.clicked_line && !l.clicked_facebook) { %><span class="adm-sub">ยังไม่คลิก</span><% } %>
@@ -64,10 +81,26 @@
             <td>
               <div><%= SOURCE_MAP[l.source] || l.source %></div>
               <% if (l.utm_campaign) { %><div class="adm-sub"><%= l.utm_campaign %></div><% } %>
+              <% if (l.aff_slug) { %><div style="font-size:11px;color:#7c3aed;margin-top:2px">🤝 <%= l.aff_slug %></div><% } %>
             </td>
             <td><span class="adm-status adm-status-<%= l.status %>"><%= LEAD_STATUS_MAP[l.status] || l.status %></span></td>
+            <% if (admin.role === 'superadmin') { %>
+            <td style="font-size:12px">
+              <% if (l.commission_amount) { %>
+                <div style="color:<%= l.commission_paid ? '#059669' : '#f59e0b' %>">
+                  ฿<%= formatNumber(l.commission_amount) %>
+                </div>
+                <div style="color:#94a3b8;font-size:10px"><%= l.commission_paid ? '✓ จ่ายแล้ว' : '⏳ ค้างจ่าย' %></div>
+              <% } else if (l.aff_slug) { %>
+                <span style="color:#94a3b8;font-size:10px">รอ converted</span>
+              <% } else { %>-<% } %>
+            </td>
+            <% } %>
             <td class="adm-dt"><%= new Date(l.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) %></td>
             <td>
+              <button onclick="showLeadDetail(<%= l.id %>)" class="adm-btn adm-btn-ghost adm-btn-sm" title="ดูรายละเอียด" style="margin-bottom:4px">
+                <i data-lucide="eye" style="width:14px;height:14px;vertical-align:middle"></i>
+              </button>
               <form action="/admin/leads/<%= l.id %>/status" method="POST" style="display:inline">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <select name="status" onchange="this.form.submit()" class="adm-inline-select">
@@ -87,9 +120,118 @@
   <% if (totalPages > 1) { %>
     <div class="adm-pagination">
       <% for (let i=1; i<=totalPages; i++) { %>
-        <a href="?page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>"
+        <a href="?page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>"
            class="adm-page-btn <%= page===i?'active':'' %>"><%= i %></a>
       <% } %>
     </div>
   <% } %>
 </div>
+
+<!-- Lead Detail Modal -->
+<style>
+.ld-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;overflow-y:auto;display:none}
+.ld-box{max-width:520px;margin:40px auto 80px;background:#fff;border-radius:12px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.ld-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.ld-header h3{margin:0;font-size:16px}
+.ld-close{background:none;border:none;cursor:pointer;font-size:22px;color:#888;line-height:1}
+.ld-section{margin-bottom:14px}
+.ld-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:6px}
+.ld-row{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.ld-label{color:#999;min-width:110px;flex-shrink:0}
+.ld-proxy{color:#f59e0b;font-size:12px;padding:4px 0}
+.ld-note{background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;border-radius:4px;font-size:13px;margin-top:12px}
+.ld-note-label{font-size:11px;color:#92400e;margin-bottom:4px;font-weight:600}
+.ld-date{margin-top:12px;color:#bbb;font-size:11px}
+</style>
+
+<div id="ldOverlay" class="ld-overlay">
+  <div class="ld-box">
+    <div class="ld-header">
+      <h3>รายละเอียด Lead</h3>
+      <button class="ld-close" onclick="closeLd()">×</button>
+    </div>
+    <div id="ldContent"><div style="text-align:center;padding:24px;color:#999">กำลังโหลด...</div></div>
+  </div>
+</div>
+
+<script>
+const TYPE_MAP_LD   = {class1:'ชั้น 1',class2plus:'ชั้น 2+',class3plus:'ชั้น 3+',compulsory:'พรบ.'}
+const STATUS_MAP_LD = {new:'ใหม่',contacted:'ติดต่อแล้ว',converted:'ปิดงาน',lost:'ยกเลิก'}
+const SOURCE_MAP_LD = {organic:'Organic',line_ads:'LINE Ads',facebook_ads:'Facebook Ads',google:'Google'}
+
+function showLeadDetail(id) {
+  document.getElementById('ldOverlay').style.display = 'block'
+  document.getElementById('ldContent').innerHTML = '<div style="text-align:center;padding:24px;color:#999">กำลังโหลด...</div>'
+  fetch('/admin/leads/' + id + '/detail')
+    .then(r => r.json())
+    .then(({ lead }) => { document.getElementById('ldContent').innerHTML = renderLd(lead) })
+    .catch(() => { document.getElementById('ldContent').innerHTML = '<div style="color:red;text-align:center;padding:24px">เกิดข้อผิดพลาด</div>' })
+}
+
+function closeLd() { document.getElementById('ldOverlay').style.display = 'none' }
+document.getElementById('ldOverlay').addEventListener('click', function(e) { if (e.target === this) closeLd() })
+
+function ldRow(label, val) {
+  if (val === null || val === undefined || val === '') return ''
+  return '<div class="ld-row"><span class="ld-label">' + label + '</span><span>' + val + '</span></div>'
+}
+function ldSection(title, rows) {
+  if (!rows) return ''
+  return '<div class="ld-section"><div class="ld-section-title">' + title + '</div>' + rows + '</div>'
+}
+
+function renderLd(l) {
+  const price = l.best_price ? '฿' + Number(l.best_price).toLocaleString('th-TH') : null
+
+  const car = ldSection('ข้อมูลรถ',
+    ldRow('รถ', l.brand + ' ' + l.model + ' ปี ' + l.year) +
+    ldRow('ประกัน', TYPE_MAP_LD[l.insurance_type] || l.insurance_type) +
+    ldRow('ราคาต่ำสุด', price)
+  )
+
+  const cta = (l.clicked_line ? 'LINE ✓ ' : '') + (l.clicked_facebook ? 'FB ✓' : '')
+  const customer = ldSection('ข้อมูลลูกค้า',
+    ldRow('ชื่อ', l.name) +
+    ldRow('เบอร์', l.phone ? '<a href="tel:' + l.phone + '">' + l.phone + '</a>' : null) +
+    ldRow('สถานะ', STATUS_MAP_LD[l.status] || l.status) +
+    ldRow('CTA คลิก', cta || null)
+  )
+
+  const src = ldSection('แหล่งที่มา',
+    ldRow('Source', SOURCE_MAP_LD[l.source] || l.source) +
+    ldRow('Campaign', l.utm_campaign) +
+    ldRow('Medium', l.utm_medium) +
+    ldRow('Content', l.utm_content)
+  )
+
+  let qp = ''
+  if (l.query_params) {
+    try {
+      const params = typeof l.query_params === 'string' ? JSON.parse(l.query_params) : l.query_params
+      const rows = Object.entries(params).map(([k, v]) => ldRow(k, v)).join('')
+      if (rows) qp = ldSection('Query Params (URL)', rows)
+    } catch {}
+  }
+
+  let ip = ''
+  if (l.ip_address) {
+    ip = ldSection('ข้อมูลผู้เข้าชม',
+      ldRow('IP', l.ip_address) +
+      ldRow('ประเทศ', l.ip_country) +
+      ldRow('เมือง', l.ip_city) +
+      ldRow('ISP', l.ip_isp) +
+      ldRow('อุปกรณ์', l.ip_mobile ? '📱 มือถือ' : '💻 Desktop') +
+      (l.ip_proxy ? '<div class="ld-proxy">⚠️ ตรวจพบ VPN/Proxy</div>' : '') +
+      ldRow('Visitor ID', l.visitor_id ? l.visitor_id.substring(0, 8) + '…' : null)
+    )
+  }
+
+  const note = l.note
+    ? '<div class="ld-note"><div class="ld-note-label">โน้ต</div>' + l.note + '</div>'
+    : ''
+
+  const date = '<div class="ld-date">สร้างเมื่อ ' + new Date(l.created_at).toLocaleString('th-TH', {day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) + '</div>'
+
+  return car + customer + src + qp + ip + note + date
+}
+</script>

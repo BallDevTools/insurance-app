@@ -30,6 +30,7 @@
           <input type="hidden" name="utm_campaign" value="<%= utm.campaign || '' %>">
           <input type="hidden" name="utm_medium" value="<%= utm.medium || '' %>">
           <input type="hidden" name="utm_content" value="<%= utm.content || '' %>">
+          <input type="hidden" name="partial_token" id="partial_token" value="">
 
           <div class="front-form-grid">
             <div class="front-field">
@@ -73,24 +74,6 @@
               <% if (errors.car_year) { %><span class="field-error"><%= errors.car_year %></span><% } %>
             </div>
 
-            <div class="front-field">
-              <label for="province">จังหวัด</label>
-              <div class="select-wrapper">
-                <select id="province" name="province" class="<%= errors.province ? 'error' : '' %>" required>
-                  <option value="">เลือกจังหวัด</option>
-                  <% provinces.forEach(p => { %>
-                    <option value="<%= p.name %>" <%= old.province === p.name ? 'selected' : '' %>><%= p.name %></option>
-                  <% }) %>
-                </select>
-              </div>
-              <% if (errors.province) { %><span class="field-error"><%= errors.province %></span><% } %>
-            </div>
-
-            <div class="front-field front-field-full">
-              <label for="license_plate">ทะเบียนรถ</label>
-              <input type="text" id="license_plate" name="license_plate" placeholder="เช่น กข 1234" value="<%= old.license_plate || '' %>" class="<%= errors.license_plate ? 'error' : '' %>" maxlength="15" required>
-              <% if (errors.license_plate) { %><span class="field-error"><%= errors.license_plate %></span><% } %>
-            </div>
           </div>
 
           <div class="front-plan-picker">
@@ -138,8 +121,50 @@
           <div class="front-cta-row">
             <button type="submit" class="front-primary-btn" id="submitBtn">ดูราคาเบื้องต้น →</button>
           </div>
-          <p class="front-note">ราคาในหน้าถัดไปเป็นราคาเบื้องต้น ยังไม่ต้องกรอกทะเบียนก็ดูได้</p>
+          <p class="front-note">ราคาในหน้าถัดไปเป็นราคาเบื้องต้นจากข้อมูลจริง</p>
         </form>
+
+        <!-- Concierge CTA -->
+        <div class="concierge-divider">
+          <span>หรือ</span>
+        </div>
+        <div class="concierge-cta-row">
+          <button type="button" class="concierge-trigger-btn" id="conciergeToggle">
+            📞 ให้เราโทรกลับ
+          </button>
+          <% if (lineOaUrl) { %>
+          <a href="<%= lineOaUrl %>" class="concierge-line-btn" target="_blank" rel="noopener">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.03 2 11c0 3.13 1.73 5.88 4.34 7.56-.19.67-.7 2.44-.8 2.82-.12.47.18.46.37.34.15-.1 2.42-1.6 3.4-2.25.55.08 1.12.12 1.69.12 5.52 0 10-4.03 10-9C22 6.03 17.52 2 12 2zm-5 12.5v-5h1.5v3.5H11v1.5H7zm4 0v-5h1.5v5H11zm5.5 0h-1.5l-2-3v3H11.5v-5H13l2 3v-3h1.5v5z"/></svg>
+            คุยทาง LINE เลย
+          </a>
+          <% } %>
+        </div>
+
+        <!-- Concierge Panel (hidden by default) -->
+        <div id="conciergePanel" class="concierge-panel" style="display:none">
+          <div class="concierge-panel-head">
+            <strong>ให้เราโทรกลับหาคุณ</strong>
+            <p>ทีมงานจะโทรหาคุณภายใน 5 นาที เพื่อช่วยเลือกแผนที่เหมาะสม</p>
+          </div>
+          <div class="front-form-grid front-form-grid-optional">
+            <div class="front-field">
+              <label for="c_name">ชื่อ (ไม่บังคับ)</label>
+              <input type="text" id="c_name" name="c_name" placeholder="ชื่อของคุณ" maxlength="200" autocomplete="name">
+            </div>
+            <div class="front-field">
+              <label for="c_phone">เบอร์โทร <span style="color:#dc2626">*</span></label>
+              <input type="tel" id="c_phone" name="c_phone" placeholder="0XX-XXX-XXXX" maxlength="12" autocomplete="tel">
+              <span class="field-error" id="c_phone_err" style="display:none">กรุณากรอกเบอร์โทรให้ถูกต้อง</span>
+            </div>
+          </div>
+          <button type="button" class="front-primary-btn" id="conciergeSubmit" style="width:100%;margin-top:.5rem">
+            ให้เราโทรกลับ →
+          </button>
+          <div id="conciergeSuccess" class="concierge-success" style="display:none">
+            ✅ รับแล้วครับ! ทีมจะโทรกลับหาคุณเร็วๆ นี้
+          </div>
+        </div>
+
       </div>
 
     </div>

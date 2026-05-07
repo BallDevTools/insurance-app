@@ -20,9 +20,19 @@ const { INSURANCE_TYPES } = require('./calculator')
 const { sanitizeBody }    = require('./services/sanitize')
 const { notifyAdminNewLead } = require('./services/lineBot')
 const { startScraperScheduler } = require('./scraper/scheduler')
+const { lookupIp } = require('./services/geoip')
 
 const PUB_LAYOUT = 'layout.ejs'
 const CLASS_MAP  = { class1: '1', class2plus: '2+', class3plus: '3+' }
+
+async function resolveAffiliate(req) {
+  const slug = req.cookies?.aff_slug
+  if (!slug) return null
+  const [[aff]] = await db.query(
+    'SELECT id FROM affiliates WHERE slug=? AND is_active=1', [slug]
+  ).catch(() => [[null]])
+  return aff?.id || null
+}
 
 // =============================================
 // Plugins
@@ -54,7 +64,9 @@ fastify.register(require('@fastify/view'), {
 fastify.register(require('@fastify/cookie'))
 fastify.register(require('@fastify/session'), {
   secret: process.env.SESSION_SECRET || 'insurance-admin-secret-key-2026-minimum32ch',
-  cookie: { secure: false, httpOnly: true, sameSite: 'lax', maxAge: 60 * 60 * 8 * 1000 }
+  store: require('./services/sessionStore'),
+  rolling: true,
+  cookie: { secure: false, httpOnly: true, sameSite: 'lax', maxAge: 14 * 24 * 60 * 60 * 1000 }
 })
 
 // =============================================
@@ -97,17 +109,42 @@ fastify.get('/', async (req, reply) => {
     }
   }
 
-  const [brands]    = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
-  const [provinces] = await db.query('SELECT name, risk_factor FROM provinces ORDER BY name')
+  // เก็บ query params ทั้งหมดไว้ใน session (attribution)
+  if (Object.keys(req.query).length > 0) {
+    req.session.queryParams = req.query
+  }
+
+  // affiliate cookie — ผูก ?aff=SLUG ไว้ 30 วัน
+  if (req.query.aff) {
+    reply.setCookie('aff_slug', req.query.aff.substring(0, 50), {
+      path: '/', maxAge: 30 * 24 * 60 * 60, httpOnly: true, sameSite: 'lax'
+    })
+  }
+
+  // visitor_id cookie — track returning visitors
+  let visitorId = req.cookies?.visitor_id
+  if (!visitorId || !/^[0-9a-f-]{36}$/.test(visitorId)) {
+    visitorId = crypto.randomUUID()
+    reply.setCookie('visitor_id', visitorId, {
+      path: '/', maxAge: 365 * 24 * 60 * 60, httpOnly: true, sameSite: 'lax'
+    })
+  }
+
+  const [brands] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
   const currentYear = new Date().getFullYear()
   const years = []
   for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
   const csrfToken = genCsrf(req)
 
+  const [[lineRow]] = await db.query(
+    "SELECT value FROM app_settings WHERE `key`='line_oa_url'"
+  ).catch(() => [[null]])
+  const lineOaUrl = lineRow?.value || null
+
   return reply.view('index.ejs', {
     title: 'คำนวณเบี้ยประกันรถยนต์',
-    brands, provinces, years, errors: {}, old: {},
-    utm: req.session.utm || {}, csrfToken
+    brands, years, errors: {}, old: {},
+    utm: req.session.utm || {}, csrfToken, lineOaUrl
   }, { layout: PUB_LAYOUT })
 })
 
@@ -125,6 +162,66 @@ fastify.get('/api/models', async (req, reply) => {
 })
 
 // =============================================
+// POST /partial-lead — บันทึก lead ระหว่างกรอกฟอร์ม
+// =============================================
+fastify.post('/partial-lead', {
+  config: { rateLimit: { max: 30, timeWindow: '1 minute' } }
+}, async (req, reply) => {
+  const body = sanitizeBody(req.body || {})
+  const { partial_token, model_id, car_year, insurance_type, name, phone, funnel_stage } = body
+
+  if (!partial_token || !/^[0-9a-f]{32}$/.test(partial_token)) return reply.send({ ok: false })
+  if (!model_id || !car_year || !insurance_type) return reply.send({ ok: false })
+  if (!INSURANCE_TYPES[insurance_type]) return reply.send({ ok: false })
+
+  const modelIdInt = parseInt(model_id)
+  const yearInt    = parseInt(car_year)
+  const stage      = funnel_stage === 'warm' ? 'warm' : 'cold'
+
+  const [modelRows] = await db.query(
+    `SELECT sm.name AS model_name, sb.name AS brand_name
+     FROM scraped_models sm JOIN scraped_brands sb ON sb.id = sm.brand_id
+     WHERE sm.id = ?`, [modelIdInt]
+  ).catch(() => [[]])
+  if (!modelRows.length) return reply.send({ ok: false })
+
+  const { brand_name, model_name } = modelRows[0]
+
+  let cleanPhone = null
+  if (phone && phone.trim()) {
+    const ph = phone.trim().replace(/[\s-]/g, '')
+    if (/^0[0-9]{8,9}$/.test(ph)) cleanPhone = ph
+  }
+  const cleanName = (name && name.trim().length >= 2) ? name.trim().substring(0, 200) : null
+
+  const utm         = req.session?.utm || {}
+  const token       = crypto.randomBytes(16).toString('hex')
+  const visitorId   = req.cookies?.visitor_id || null
+  const queryParams = req.session?.queryParams ? JSON.stringify(req.session.queryParams) : null
+  const affiliateId = await resolveAffiliate(req)
+
+  await db.query(
+    `INSERT INTO leads
+       (token, partial_token, source, brand, model, model_id, year, insurance_type, funnel_stage, name, phone, visitor_id, query_params, affiliate_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       brand=VALUES(brand), model=VALUES(model), model_id=VALUES(model_id),
+       year=VALUES(year), insurance_type=VALUES(insurance_type),
+       funnel_stage=IF(funnel_stage='hot','hot',VALUES(funnel_stage)),
+       name=COALESCE(VALUES(name), name),
+       phone=COALESCE(VALUES(phone), phone),
+       visitor_id=COALESCE(visitor_id, VALUES(visitor_id)),
+       query_params=COALESCE(query_params, VALUES(query_params)),
+       affiliate_id=COALESCE(affiliate_id, VALUES(affiliate_id)),
+       updated_at=NOW()`,
+    [token, partial_token, utm.source || 'organic',
+     brand_name, model_name, modelIdInt, yearInt, insurance_type, stage, cleanName, cleanPhone, visitorId, queryParams, affiliateId]
+  ).catch(() => {})
+
+  return reply.send({ ok: true })
+})
+
+// =============================================
 // POST /quote — บันทึก lead + redirect ไป result
 // =============================================
 fastify.post('/quote', {
@@ -139,7 +236,7 @@ fastify.post('/quote', {
   const body = sanitizeBody(req.body || {})
   const {
     car_brand, car_model, car_model_id, car_year,
-    license_plate, province, insurance_type,
+    insurance_type, partial_token,
     name, phone,
     utm_source, utm_campaign, utm_medium, utm_content
   } = body
@@ -151,21 +248,17 @@ fastify.post('/quote', {
   if (!car_model)  errors.car_model = 'กรุณาเลือกรุ่นรถ'
   if (!car_year || isNaN(yearInt) || yearInt < currentYear - 20 || yearInt > currentYear)
     errors.car_year = 'กรุณาเลือกปีผลิต'
-  if (!license_plate || license_plate.trim().length < 2 || license_plate.trim().length > 20)
-    errors.license_plate = 'กรุณากรอกทะเบียนรถ'
-  if (!province) errors.province = 'กรุณาเลือกจังหวัด'
   if (!insurance_type || !INSURANCE_TYPES[insurance_type])
     errors.insurance_type = 'กรุณาเลือกประเภทประกัน'
 
   if (Object.keys(errors).length > 0) {
-    const [brands]    = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
-    const [provinces] = await db.query('SELECT name, risk_factor FROM provinces ORDER BY name')
+    const [brands] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
     const years = []
     for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
     const csrfToken = genCsrf(req)
     return reply.view('index.ejs', {
       title: 'คำนวณเบี้ยประกันรถยนต์',
-      brands, provinces, years, errors, old: body,
+      brands, years, errors, old: body,
       utm: req.session.utm || {}, csrfToken
     }, { layout: PUB_LAYOUT })
   }
@@ -209,6 +302,12 @@ fastify.post('/quote', {
   const medium   = utm_medium   || utm.medium    || null
   const content  = utm_content  || utm.content   || null
 
+  // visitor_id + IP tracking + query params + affiliate
+  const visitorId   = req.cookies?.visitor_id || null
+  const geoData     = await lookupIp(req.ip).catch(() => null)
+  const queryParams = req.session?.queryParams ? JSON.stringify(req.session.queryParams) : null
+  const affiliateId = await resolveAffiliate(req)
+
   // validate phone/name (optional)
   let cleanPhone = null
   if (phone && phone.trim()) {
@@ -218,31 +317,63 @@ fastify.post('/quote', {
   const cleanName = (name && name.trim().length >= 2)
     ? name.trim().substring(0, 200) : null
 
-  // สร้าง token (32-char hex)
-  const token = crypto.randomBytes(16).toString('hex')
+  // ตรวจ partial lead ที่บันทึกไว้ระหว่างกรอกฟอร์ม
+  let resultToken = null
+  if (partial_token && /^[0-9a-f]{32}$/.test(partial_token)) {
+    const [[existing]] = await db.query(
+      'SELECT token FROM leads WHERE partial_token = ?', [partial_token]
+    ).catch(() => [[null]])
+    if (existing?.token) resultToken = existing.token
+  }
 
-  // บันทึก lead
-  await db.query(
-    `INSERT INTO leads
-      (token, source, utm_campaign, utm_medium, utm_content,
-       brand, model, model_id, year, license_plate, province,
-       insurance_type, name, phone, best_price, packages_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [token, source, campaign, medium, content,
-     brandName, modelName, modelId > 0 ? modelId : null, yearInt,
-     license_plate.trim().toUpperCase(), province,
-     insurance_type, cleanName, cleanPhone, bestPrice, JSON.stringify(packages)]
-  )
+  if (resultToken) {
+    // อัปเกรด partial lead → hot
+    await db.query(
+      `UPDATE leads SET
+         brand=?, model=?, model_id=?, year=?, insurance_type=?,
+         funnel_stage='hot', name=?, phone=?, best_price=?, packages_json=?,
+         source=?, utm_campaign=?, utm_medium=?, utm_content=?,
+         visitor_id=COALESCE(visitor_id,?),
+         ip_address=?, ip_country=?, ip_city=?, ip_isp=?, ip_mobile=?, ip_proxy=?,
+         query_params=COALESCE(query_params,?),
+         affiliate_id=COALESCE(affiliate_id,?),
+         updated_at=NOW()
+       WHERE token=?`,
+      [brandName, modelName, modelId > 0 ? modelId : null, yearInt, insurance_type,
+       cleanName, cleanPhone, bestPrice, JSON.stringify(packages),
+       source, campaign, medium, content,
+       visitorId,
+       req.ip, geoData?.country||null, geoData?.city||null, geoData?.isp||null,
+       geoData?.mobile||0, geoData?.proxy||0,
+       queryParams, affiliateId, resultToken]
+    )
+  } else {
+    // สร้าง lead ใหม่
+    resultToken = crypto.randomBytes(16).toString('hex')
+    await db.query(
+      `INSERT INTO leads
+        (token, source, utm_campaign, utm_medium, utm_content,
+         brand, model, model_id, year,
+         insurance_type, funnel_stage, name, phone, best_price, packages_json,
+         visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, query_params, affiliate_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'hot', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [resultToken, source, campaign, medium, content,
+       brandName, modelName, modelId > 0 ? modelId : null, yearInt,
+       insurance_type, cleanName, cleanPhone, bestPrice, JSON.stringify(packages),
+       visitorId, req.ip, geoData?.country||null, geoData?.city||null, geoData?.isp||null,
+       geoData?.mobile||0, geoData?.proxy||0, queryParams, affiliateId]
+    )
+  }
 
   // Notification badge + LINE notify
-  const [[newLead]] = await db.query('SELECT id FROM leads WHERE token = ?', [token])
+  const [[newLead]] = await db.query('SELECT id FROM leads WHERE token = ?', [resultToken])
   db.query("INSERT INTO notifications (type, ref_id) VALUES ('new_lead', ?)", [newLead?.id || 0]).catch(() => {})
   notifyAdminNewLead({
     brand: brandName, model: modelName, year: yearInt,
-    insurance_type, province, name: cleanName, phone: cleanPhone, source
+    insurance_type, name: cleanName, phone: cleanPhone, source
   }).catch(() => {})
 
-  return reply.redirect(`/result/${token}`)
+  return reply.redirect(`/result/${resultToken}`)
 })
 
 // =============================================
@@ -330,10 +461,52 @@ fastify.get('/click/facebook', async (req, reply) => {
 })
 
 // =============================================
+// POST /concierge — ขอให้ทีมโทรกลับ (ไม่ต้องกรอกฟอร์มเต็ม)
+// =============================================
+fastify.post('/concierge', {
+  config: { rateLimit: { max: 5, timeWindow: '5 minutes' } }
+}, async (req, reply) => {
+  const body = sanitizeBody(req.body || {})
+  const { phone, name } = body
+
+  if (!phone || !phone.trim()) return reply.send({ ok: false, message: 'กรุณากรอกเบอร์โทร' })
+  const ph = phone.trim().replace(/[\s-]/g, '')
+  if (!/^0[0-9]{8,9}$/.test(ph)) return reply.send({ ok: false, message: 'เบอร์โทรไม่ถูกต้อง' })
+
+  const cleanName  = (name && name.trim().length >= 2) ? name.trim().substring(0, 200) : null
+  const token      = crypto.randomBytes(16).toString('hex')
+  const utm        = req.session?.utm || {}
+  const visitorId   = req.cookies?.visitor_id || null
+  const geoData     = await lookupIp(req.ip).catch(() => null)
+  const queryParams = req.session?.queryParams ? JSON.stringify(req.session.queryParams) : null
+  const affiliateId = await resolveAffiliate(req)
+
+  await db.query(
+    `INSERT INTO leads
+       (token, source, brand, model, year, license_plate, province,
+        insurance_type, funnel_stage, lead_type, name, phone,
+        visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, query_params, affiliate_id)
+     VALUES (?, ?, 'ไม่ระบุ', 'ไม่ระบุ', ?, '', 'ไม่ระบุ', 'class1', 'hot', 'concierge', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [token, utm.source || 'organic', new Date().getFullYear(), cleanName, ph,
+     visitorId, req.ip, geoData?.country||null, geoData?.city||null, geoData?.isp||null,
+     geoData?.mobile||0, geoData?.proxy||0, queryParams, affiliateId]
+  ).catch(() => {})
+
+  const [[newLead]] = await db.query('SELECT id FROM leads WHERE token = ?', [token]).catch(() => [[null]])
+  db.query("INSERT INTO notifications (type, ref_id) VALUES ('new_lead', ?)", [newLead?.id || 0]).catch(() => {})
+  notifyAdminNewLead({
+    brand: 'Concierge', model: '—', year: new Date().getFullYear(),
+    insurance_type: 'class1', name: cleanName, phone: ph, source: utm.source || 'organic'
+  }).catch(() => {})
+
+  return reply.send({ ok: true })
+})
+
+// =============================================
 // GET /compare — เปรียบเทียบราคา (คงไว้)
 // =============================================
 fastify.get('/compare', async (req, reply) => {
-  const { brand_id, model_id, year, province } = req.query
+  const { brand_id, model_id, year, province, insurance_class } = req.query
   const [brands]    = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
   const [provinces] = await db.query('SELECT name FROM provinces ORDER BY name')
   const currentYear = new Date().getFullYear()
@@ -350,7 +523,10 @@ fastify.get('/compare', async (req, reply) => {
   }
 
   let comparisons = null
+  let sameClassPackages = null
   let selectedModel = null
+  const CLASS_LABEL_MAP = { class1: '1', class2plus: '2+', class3plus: '3+' }
+
   if (model_id && year) {
     const modelIdInt = parseInt(model_id)
     const yearInt    = parseInt(year)
@@ -362,19 +538,37 @@ fastify.get('/compare', async (req, reply) => {
     )
     if (modelInfo.length > 0) {
       selectedModel = modelInfo[0]
-      const [allPackages] = await db.query(
-        `SELECT company_name, insurance_class, premium_amount, premium_discounted
-         FROM scraped_packages
-         WHERE model_id = ? AND car_year = ?
-         ORDER BY insurance_class, COALESCE(premium_discounted, premium_amount) ASC`,
-        [modelIdInt, yearInt]
-      )
-      const reverseMap = { '1': 'class1', '2+': 'class2plus', '3+': 'class3plus' }
-      comparisons = { class1: [], class2plus: [], class3plus: [] }
-      allPackages.forEach(pkg => {
-        const key = reverseMap[pkg.insurance_class]
-        if (key) comparisons[key].push(pkg)
-      })
+
+      if (insurance_class && CLASS_LABEL_MAP[insurance_class]) {
+        // Mode B: same-class, multi-company
+        const scraperClass = CLASS_LABEL_MAP[insurance_class]
+        const [pkgRows] = await db.query(
+          `SELECT company_name, insurance_class, premium_amount, premium_discounted, coverage
+           FROM scraped_packages
+           WHERE model_id = ? AND car_year = ? AND insurance_class = ?
+           ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
+          [modelIdInt, yearInt, scraperClass]
+        )
+        sameClassPackages = pkgRows.map(pkg => ({
+          ...pkg,
+          coverage: typeof pkg.coverage === 'string' ? JSON.parse(pkg.coverage) : (pkg.coverage || null)
+        }))
+      } else {
+        // Mode A: cross-class (default)
+        const [allPackages] = await db.query(
+          `SELECT company_name, insurance_class, premium_amount, premium_discounted
+           FROM scraped_packages
+           WHERE model_id = ? AND car_year = ?
+           ORDER BY insurance_class, COALESCE(premium_discounted, premium_amount) ASC`,
+          [modelIdInt, yearInt]
+        )
+        const reverseMap = { '1': 'class1', '2+': 'class2plus', '3+': 'class3plus' }
+        comparisons = { class1: [], class2plus: [], class3plus: [] }
+        allPackages.forEach(pkg => {
+          const key = reverseMap[pkg.insurance_class]
+          if (key) comparisons[key].push(pkg)
+        })
+      }
     }
   }
 
@@ -382,8 +576,8 @@ fastify.get('/compare', async (req, reply) => {
   return reply.view('compare.ejs', {
     title: 'เปรียบเทียบประกันรถยนต์',
     brands, models, provinces, years,
-    comparisons, selectedModel,
-    selected: { brand_id, model_id, year, province },
+    comparisons, sameClassPackages, selectedModel,
+    selected: { brand_id, model_id, year, province, insurance_class },
     formatNumber, INSURANCE_TYPES, csrfToken
   }, { layout: PUB_LAYOUT })
 })

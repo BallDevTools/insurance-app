@@ -1,7 +1,26 @@
+<% if (admin.role === 'affiliate') { %>
+<div class="adm-card adm-card-full" style="margin-bottom:16px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff">
+  <div style="display:flex;gap:32px;flex-wrap:wrap;padding:4px 0">
+    <div>
+      <div style="font-size:24px;font-weight:700">฿<%= formatNumber(totals.pending_commission||0) %></div>
+      <div style="opacity:.8;font-size:13px">Commission ค้างจ่าย</div>
+    </div>
+    <div>
+      <div style="font-size:24px;font-weight:700">฿<%= formatNumber(totals.paid_commission||0) %></div>
+      <div style="opacity:.8;font-size:13px">จ่ายแล้วทั้งหมด</div>
+    </div>
+    <div>
+      <div style="font-size:24px;font-weight:700"><%= totals.converted_count||0 %></div>
+      <div style="opacity:.8;font-size:13px">Leads ปิดงานสำเร็จ</div>
+    </div>
+  </div>
+</div>
+<% } %>
+
 <!-- FUNNEL STATS -->
 <div class="adm-stats">
   <div class="adm-stat adm-stat-blue">
-    <div class="adm-stat-icon">📋</div>
+    <div class="adm-stat-icon"><i data-lucide="clipboard-list"></i></div>
     <div>
       <div class="adm-stat-val"><%= totals.today_leads || 0 %></div>
       <div class="adm-stat-lbl">Leads วันนี้</div>
@@ -9,7 +28,7 @@
     </div>
   </div>
   <div class="adm-stat adm-stat-green">
-    <div class="adm-stat-icon">💬</div>
+    <div class="adm-stat-icon"><i data-lucide="mouse-pointer-click"></i></div>
     <div>
       <div class="adm-stat-val"><%= totals.total_clicked || 0 %></div>
       <div class="adm-stat-lbl">คลิก LINE / FB</div>
@@ -17,7 +36,7 @@
     </div>
   </div>
   <div class="adm-stat adm-stat-purple">
-    <div class="adm-stat-icon">✅</div>
+    <div class="adm-stat-icon"><i data-lucide="phone-call"></i></div>
     <div>
       <div class="adm-stat-val"><%= totals.contacted_count || 0 %></div>
       <div class="adm-stat-lbl">ติดต่อแล้ว</div>
@@ -25,13 +44,43 @@
     </div>
   </div>
   <div class="adm-stat adm-stat-orange">
-    <div class="adm-stat-icon">🏆</div>
+    <div class="adm-stat-icon"><i data-lucide="trophy"></i></div>
     <div>
       <div class="adm-stat-val"><%= totals.converted_count || 0 %></div>
       <div class="adm-stat-lbl">ปิดงานสำเร็จ</div>
       <% const convRate = totals.total_leads > 0 ? Math.round(totals.converted_count/totals.total_leads*100) : 0 %>
       <div class="adm-stat-sub">Conversion <%= convRate %>%</div>
     </div>
+  </div>
+</div>
+
+<!-- FUNNEL STAGE -->
+<div class="adm-card adm-card-full adm-funnel-card">
+  <div class="adm-card-header">
+    <div class="adm-card-title">🔥 Funnel Stage</div>
+    <a href="/admin/leads" class="adm-link-btn">ดูทั้งหมด →</a>
+  </div>
+  <div class="adm-funnel-stages">
+    <a href="/admin/leads?funnel_stage=cold" class="adm-funnel-stage adm-funnel-cold">
+      <div class="adm-funnel-icon"><i data-lucide="eye"></i></div>
+      <div class="adm-funnel-val"><%= totals.cold_count || 0 %></div>
+      <div class="adm-funnel-lbl">แวะดู</div>
+      <div class="adm-funnel-sub">เข้ามาดู/กรอกนิดหน่อย</div>
+    </a>
+    <div class="adm-funnel-arrow">→</div>
+    <a href="/admin/leads?funnel_stage=warm" class="adm-funnel-stage adm-funnel-warm">
+      <div class="adm-funnel-icon"><i data-lucide="clock"></i></div>
+      <div class="adm-funnel-val"><%= totals.warm_count || 0 %></div>
+      <div class="adm-funnel-lbl">กำลังคิด</div>
+      <div class="adm-funnel-sub">กรอกครึ่งทาง แล้วออก</div>
+    </a>
+    <div class="adm-funnel-arrow">→</div>
+    <a href="/admin/leads?funnel_stage=hot" class="adm-funnel-stage adm-funnel-hot">
+      <div class="adm-funnel-icon"><i data-lucide="flame"></i></div>
+      <div class="adm-funnel-val"><%= totals.hot_count || 0 %></div>
+      <div class="adm-funnel-lbl">พร้อมซื้อ</div>
+      <div class="adm-funnel-sub">กรอกครบ เห็นราคาแล้ว</div>
+    </a>
   </div>
 </div>
 
@@ -91,26 +140,24 @@
     </div>
   </div>
 
-  <!-- Top Provinces + Brands -->
+  <!-- Top Brands -->
   <div class="adm-card">
-    <div class="adm-card-title">📍 Top 5 จังหวัด</div>
-    <% const maxP=Math.max(...topProvinces.map(p=>p.cnt),1) %>
-    <div class="adm-hbars">
-      <% topProvinces.forEach((p,i)=>{ %>
-        <div class="adm-hbar-row">
-          <span class="adm-hbar-lbl"><span class="adm-rank">#<%= i+1 %></span> <%= p.province %></span>
-          <div class="adm-hbar-track"><div class="adm-hbar-fill" style="width:<%= Math.round(p.cnt/maxP*100) %>%"></div></div>
-          <span class="adm-hbar-val"><%= p.cnt %></span>
-        </div>
-      <% }) %>
+    <div class="adm-card-header">
+      <div class="adm-card-title">ยี่ห้อยอดนิยม</div>
+      <a href="/admin/reports" class="adm-link-btn" style="font-size:.78rem">ดูรายงาน →</a>
     </div>
-    <div class="adm-card-title" style="margin-top:1rem">🚗 Top 5 ยี่ห้อ</div>
+    <% if (!topBrands.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
     <% const maxB=Math.max(...topBrands.map(b=>b.cnt),1) %>
     <div class="adm-hbars">
       <% topBrands.forEach((b,i)=>{ %>
         <div class="adm-hbar-row">
-          <span class="adm-hbar-lbl"><span class="adm-rank">#<%= i+1 %></span> <%= b.car_brand %></span>
-          <div class="adm-hbar-track"><div class="adm-hbar-fill adm-hbar-purple" style="width:<%= Math.round(b.cnt/maxB*100) %>%"></div></div>
+          <span class="adm-hbar-lbl">
+            <span class="adm-rank-badge adm-rank-<%= i+1 %>">#<%= i+1 %></span>
+            <%= b.car_brand %>
+          </span>
+          <div class="adm-hbar-track">
+            <div class="adm-hbar-fill adm-hbar-purple" style="width:<%= Math.round(b.cnt/maxB*100) %>%"></div>
+          </div>
           <span class="adm-hbar-val"><%= b.cnt %></span>
         </div>
       <% }) %>

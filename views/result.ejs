@@ -29,13 +29,6 @@
           <div class="pub-result-summary-val"><%= insuranceConfig.label %></div>
         </div>
       </div>
-      <div class="pub-result-summary-item">
-        <div class="pub-result-summary-icon">📍</div>
-        <div>
-          <div class="pub-result-summary-sub">จังหวัด</div>
-          <div class="pub-result-summary-val"><%= lead.province %></div>
-        </div>
-      </div>
     </div>
     <% if (lead.model_id) { %>
     <div style="text-align:center;margin-top:1rem">
@@ -134,7 +127,7 @@
 
         <div class="front-note-card">
           <strong>ข้อมูลที่ใช้ในครั้งนี้</strong>
-          <p>ทะเบียน <%= lead.license_plate %> · <%= new Date(lead.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %></p>
+          <p><%= new Date(lead.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %></p>
         </div>
       </div>
 

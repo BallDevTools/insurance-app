@@ -1,0 +1,151 @@
+<% if (msg === 'added')   { %><div class="adm-alert adm-alert-success">✅ เพิ่ม Affiliate เรียบร้อย</div><% } %>
+<% if (msg === 'updated') { %><div class="adm-alert adm-alert-success">✅ อัปเดตเรียบร้อย</div><% } %>
+<% if (msg === 'paid')    { %><div class="adm-alert adm-alert-success">✅ Mark paid เรียบร้อย</div><% } %>
+<% if (error === 'slug_taken')    { %><div class="adm-alert adm-alert-error">❌ Slug นี้ถูกใช้ไปแล้ว</div><% } %>
+<% if (error === 'invalid_input') { %><div class="adm-alert adm-alert-error">❌ กรุณากรอก Slug และชื่อให้ครบ</div><% } %>
+<% if (error === 'invalid_slug')  { %><div class="adm-alert adm-alert-error">❌ Slug ต้องเป็นตัวอักษรภาษาอังกฤษ ตัวเลข - _ เท่านั้น</div><% } %>
+
+<!-- ADD FORM -->
+<div class="adm-card" style="max-width:600px">
+  <div class="adm-card-title">เพิ่ม Affiliate ใหม่</div>
+  <form action="/admin/affiliates/add" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="adm-settings-row">
+      <label>Slug <span style="color:#94a3b8;font-size:11px">(ใช้ใน ?aff=slug)</span></label>
+      <input type="text" name="slug" placeholder="somchai" required pattern="[a-zA-Z0-9_-]+" style="max-width:200px">
+    </div>
+    <div class="adm-settings-row">
+      <label>ชื่อ Affiliate</label>
+      <input type="text" name="name" placeholder="สมชาย ใจดี" required>
+    </div>
+    <div class="adm-settings-row">
+      <label>เบอร์โทร</label>
+      <input type="text" name="phone" placeholder="08x-xxx-xxxx">
+    </div>
+    <div class="adm-settings-row">
+      <label>Commission Rate (%)</label>
+      <input type="number" name="commission_rate" value="0" min="0" max="100" step="0.1" style="max-width:120px">
+      <span class="adm-settings-hint">% ที่ต้องจ่ายให้ระบบ</span>
+    </div>
+    <div style="padding:12px 0 4px">
+      <button type="submit" class="adm-btn adm-btn-primary">เพิ่ม Affiliate</button>
+    </div>
+  </form>
+</div>
+
+<!-- AFFILIATES TABLE -->
+<div class="adm-card adm-card-full">
+  <div class="adm-card-header">
+    <div class="adm-card-title">Affiliates ทั้งหมด <span class="adm-badge"><%= affiliates.length %></span></div>
+  </div>
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead><tr>
+        <th>Slug / Link</th>
+        <th>ชื่อ / เบอร์</th>
+        <th>Rate</th>
+        <th>Leads</th>
+        <th>Converted</th>
+        <th>ค้างจ่าย</th>
+        <th>จ่ายแล้ว</th>
+        <th>Account</th>
+        <th>สถานะ</th>
+        <th>Action</th>
+      </tr></thead>
+      <tbody>
+        <% if (!affiliates.length) { %>
+          <tr><td colspan="10" class="adm-empty-cell">ยังไม่มี Affiliate</td></tr>
+        <% } %>
+        <% affiliates.forEach(a => { %>
+          <tr>
+            <td>
+              <div><strong>?aff=<%= a.slug %></strong></div>
+              <div class="adm-sub" style="font-size:11px;word-break:break-all">ins.dapp3.net/?aff=<%= a.slug %></div>
+            </td>
+            <td>
+              <div class="adm-name"><%= a.name %></div>
+              <% if (a.phone) { %><div class="adm-sub"><a href="tel:<%= a.phone %>"><%= a.phone %></a></div><% } %>
+            </td>
+            <td><strong><%= parseFloat(a.commission_rate).toFixed(1) %>%</strong></td>
+            <td><%= a.total_leads || 0 %></td>
+            <td><%= a.converted_leads || 0 %></td>
+            <td class="adm-money" style="color:#f59e0b">
+              <% if (parseFloat(a.pending_commission||0) > 0) { %>
+                ฿<%= formatNumber(a.pending_commission) %>
+              <% } else { %>-<% } %>
+            </td>
+            <td class="adm-money" style="color:#059669">
+              <% if (parseFloat(a.paid_commission||0) > 0) { %>฿<%= formatNumber(a.paid_commission) %><% } else { %>-<% } %>
+            </td>
+            <td>
+              <% if (a.admin_username) { %>
+                <span style="font-size:12px;color:#059669">✓ <%= a.admin_username %></span>
+              <% } else { %>
+                <a href="/admin/admins" class="adm-btn adm-btn-ghost adm-btn-sm" style="font-size:11px">+ สร้าง Account</a>
+              <% } %>
+            </td>
+            <td>
+              <span style="font-size:12px;padding:2px 8px;border-radius:10px;background:<%= a.is_active ? '#dcfce7' : '#fee2e2' %>;color:<%= a.is_active ? '#166534' : '#991b1b' %>">
+                <%= a.is_active ? 'Active' : 'Inactive' %>
+              </span>
+            </td>
+            <td>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <% if (parseFloat(a.pending_commission||0) > 0) { %>
+                  <form action="/admin/affiliates/<%= a.id %>/pay-all" method="POST" onsubmit="return confirm('Mark paid ฿<%= formatNumber(a.pending_commission) %>?')">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button type="submit" class="adm-btn adm-btn-sm" style="background:#059669;color:#fff;font-size:11px;width:100%">Mark Paid</button>
+                  </form>
+                <% } %>
+                <button onclick="openEditAff(<%= JSON.stringify({id:a.id,name:a.name,phone:a.phone||'',commission_rate:a.commission_rate}) %>)" class="adm-btn adm-btn-ghost adm-btn-sm" style="font-size:11px">แก้ไข</button>
+                <form action="/admin/affiliates/<%= a.id %>/toggle" method="POST">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="adm-btn adm-btn-ghost adm-btn-sm" style="font-size:11px;width:100%"><%= a.is_active ? 'ปิดการใช้' : 'เปิดการใช้' %></button>
+                </form>
+                <a href="/admin/leads?aff=<%= a.slug %>" class="adm-btn adm-btn-ghost adm-btn-sm" style="font-size:11px;text-align:center">ดู Leads</a>
+              </div>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="editAffModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000">
+  <div style="max-width:460px;margin:80px auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+      <h3 style="margin:0">แก้ไข Affiliate</h3>
+      <button onclick="document.getElementById('editAffModal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:22px;color:#888">×</button>
+    </div>
+    <form id="editAffForm" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="adm-settings-row">
+        <label>ชื่อ</label>
+        <input type="text" name="name" id="editAffName" required>
+      </div>
+      <div class="adm-settings-row">
+        <label>เบอร์โทร</label>
+        <input type="text" name="phone" id="editAffPhone">
+      </div>
+      <div class="adm-settings-row">
+        <label>Commission Rate (%)</label>
+        <input type="number" name="commission_rate" id="editAffRate" min="0" max="100" step="0.1" style="max-width:120px">
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button type="submit" class="adm-btn adm-btn-primary">บันทึก</button>
+        <button type="button" onclick="document.getElementById('editAffModal').style.display='none'" class="adm-btn adm-btn-ghost">ยกเลิก</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function openEditAff(a) {
+  document.getElementById('editAffForm').action = '/admin/affiliates/' + a.id + '/edit'
+  document.getElementById('editAffName').value = a.name
+  document.getElementById('editAffPhone').value = a.phone || ''
+  document.getElementById('editAffRate').value = a.commission_rate
+  document.getElementById('editAffModal').style.display = 'block'
+}
+</script>

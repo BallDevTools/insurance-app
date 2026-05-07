@@ -10,14 +10,14 @@ const convRate  = pct(f.converted,    f.total_leads)
 <!-- FUNNEL STATS -->
 <div class="adm-stats">
   <div class="adm-stat adm-stat-blue">
-    <div class="adm-stat-icon">👥</div>
+    <div class="adm-stat-icon"><i data-lucide="users"></i></div>
     <div>
       <div class="adm-stat-val"><%= f.total_leads||0 %></div>
       <div class="adm-stat-lbl">Leads ทั้งหมด</div>
     </div>
   </div>
   <div class="adm-stat adm-stat-green">
-    <div class="adm-stat-icon">💬</div>
+    <div class="adm-stat-icon"><i data-lucide="message-circle"></i></div>
     <div>
       <div class="adm-stat-val"><%= f.line_clicks||0 %></div>
       <div class="adm-stat-lbl">คลิก LINE</div>
@@ -25,7 +25,7 @@ const convRate  = pct(f.converted,    f.total_leads)
     </div>
   </div>
   <div class="adm-stat adm-stat-purple">
-    <div class="adm-stat-icon">📘</div>
+    <div class="adm-stat-icon"><i data-lucide="thumbs-up"></i></div>
     <div>
       <div class="adm-stat-val"><%= f.fb_clicks||0 %></div>
       <div class="adm-stat-lbl">คลิก Facebook</div>
@@ -33,7 +33,7 @@ const convRate  = pct(f.converted,    f.total_leads)
     </div>
   </div>
   <div class="adm-stat adm-stat-orange">
-    <div class="adm-stat-icon">🏆</div>
+    <div class="adm-stat-icon"><i data-lucide="trophy"></i></div>
     <div>
       <div class="adm-stat-val"><%= f.converted||0 %></div>
       <div class="adm-stat-lbl">ปิดงานสำเร็จ</div>
@@ -44,19 +44,30 @@ const convRate  = pct(f.converted,    f.total_leads)
 
 <!-- MONTHLY CHART -->
 <div class="adm-card adm-card-full">
-  <div class="adm-card-title">📊 Leads รายเดือน (12 เดือนล่าสุด)</div>
-  <div class="adm-monthly-chart">
-    <% if (!monthly.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
-    <% const maxM = Math.max(...monthly.map(m=>m.leads), 1) %>
+  <div class="adm-card-header">
+    <div class="adm-card-title">Leads รายเดือน (12 เดือนล่าสุด)</div>
+    <div style="display:flex;gap:1rem;font-size:.78rem;color:var(--gray-400)">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--adm-accent);margin-right:.3rem"></span>Leads</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#10b981;margin-right:.3rem"></span>คลิก</span>
+    </div>
+  </div>
+  <% if (!monthly.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
+  <% const maxM = Math.max(...monthly.map(m=>m.leads), 1) %>
+  <div class="adm-report-chart">
     <% monthly.forEach(m=>{ %>
-      <div class="adm-bar-group adm-bar-wide">
-        <div class="adm-bar-track">
-          <div class="adm-bar-fill adm-bar-month" style="height:<%= Math.round(m.leads/maxM*100) %>%">
-            <span class="adm-bar-val"><%= m.leads %></span>
+      <div class="adm-report-bar-group">
+        <div class="adm-report-bars">
+          <div class="adm-report-bar-wrap" title="<%= m.leads %> leads">
+            <div class="adm-report-bar adm-report-bar-leads" style="height:<%= Math.max(4, Math.round(m.leads/maxM*100)) %>%">
+              <% if(m.leads > 0){ %><span class="adm-report-bar-val"><%= m.leads %></span><% } %>
+            </div>
+          </div>
+          <div class="adm-report-bar-wrap" title="<%= m.clicks %> คลิก">
+            <div class="adm-report-bar adm-report-bar-clicks" style="height:<%= Math.max(0, Math.round(m.clicks/maxM*100)) %>%"></div>
           </div>
         </div>
-        <div class="adm-bar-lbl adm-bar-month-lbl"><%= m.month_label %></div>
-        <div class="adm-bar-rev adm-sub"><%= m.clicks %> คลิก</div>
+        <div class="adm-report-bar-lbl"><%= m.month_label %></div>
+        <div class="adm-report-bar-sub"><%= m.clicks %> คลิก</div>
       </div>
     <% }) %>
   </div>

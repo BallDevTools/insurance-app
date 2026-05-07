@@ -20,6 +20,42 @@ function checkCsrf(req) {
 const ADM_LAYOUT = 'admin_layout.ejs'
 const AUTH_LAYOUT = 'auth_layout.ejs'
 
+// lead WHERE filter ตาม role
+function leadFilter(admin) {
+  if (admin.role === 'affiliate') return { extra: ' AND l.affiliate_id = ?', p: [admin.affiliate_id] }
+  if (admin.role === 'agent')     return { extra: ' AND l.affiliate_id IS NULL', p: [] }
+  return { extra: '', p: [] }
+}
+
+// คำนวณ commission เมื่อ lead → converted
+async function calcCommission(leadId) {
+  const [[lead]] = await db.query(
+    'SELECT affiliate_id, best_price, commission_amount FROM leads WHERE id=?', [leadId]
+  ).catch(() => [[null]])
+  if (!lead?.affiliate_id || !lead?.best_price || lead.commission_amount) return
+
+  const [sRows] = await db.query(
+    "SELECT `key`,`value` FROM app_settings WHERE `key` IN ('commission_base','broker_fee_rate')"
+  ).catch(() => [[]])
+  const s = {}; sRows.forEach(r => { s[r.key] = r.value })
+
+  const [[aff]] = await db.query(
+    'SELECT commission_rate FROM affiliates WHERE id=?', [lead.affiliate_id]
+  ).catch(() => [[null]])
+  if (!aff) return
+
+  const price    = parseFloat(lead.best_price)
+  const commRate = parseFloat(aff.commission_rate) / 100
+  let amount
+  if (s.commission_base === 'broker_fee') {
+    const bfRate = parseFloat(s.broker_fee_rate || 0) / 100
+    amount = price * bfRate * commRate
+  } else {
+    amount = price * commRate
+  }
+  await db.query('UPDATE leads SET commission_amount=? WHERE id=?', [amount.toFixed(2), leadId]).catch(() => {})
+}
+
 function formatNumber(n) {
   return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0 })
 }
@@ -44,12 +80,25 @@ module.exports = async function adminPlugin(fastify, opts) {
     // Auth check
     if (req.url.startsWith('/admin/login')) return
     if (!req.session?.admin) return reply.redirect('/admin/login')
+
+    // Affiliate: เข้าได้เฉพาะ dashboard + leads
+    if (req.session.admin.role === 'affiliate') {
+      const p = req.url.split('?')[0]
+      const ok = p === '/admin' || p.startsWith('/admin/leads') || p.startsWith('/admin/api/')
+      if (!ok) return reply.redirect('/admin/leads')
+    }
+    // Fetch theme settings for layout CSS vars
+    const [themeRows] = await db.query(
+      "SELECT `key`, `value` FROM app_settings WHERE `key` LIKE 'theme_%'"
+    ).catch(() => [[]])
+    req.themeSettings = themeRows.reduce((acc, r) => { acc[r.key] = r.value; return acc }, {})
   })
 
   // helper: render admin view (includes csrfToken automatically)
   const av = (reply, tpl, data = {}) => {
     const csrfToken = genCsrf(reply.request)
-    return reply.view(`admin/${tpl}`, { formatNumber, TYPE_MAP, LEAD_STATUS_MAP, SOURCE_MAP, INSURANCE_TYPES, csrfToken, ...data }, { layout: ADM_LAYOUT })
+    const themeSettings = reply.request.themeSettings || {}
+    return reply.view(`admin/${tpl}`, { formatNumber, TYPE_MAP, LEAD_STATUS_MAP, SOURCE_MAP, INSURANCE_TYPES, csrfToken, themeSettings, ...data }, { layout: ADM_LAYOUT })
   }
 
   // ============================================================
@@ -84,7 +133,7 @@ module.exports = async function adminPlugin(fastify, opts) {
   })
 
   fastify.get('/logout', async (req, reply) => {
-    req.session.destroy()
+    await new Promise(resolve => req.session.destroy(resolve))
     return reply.redirect('/admin/login')
   })
 
@@ -92,6 +141,9 @@ module.exports = async function adminPlugin(fastify, opts) {
   // DASHBOARD
   // ============================================================
   fastify.get('/', async (req, reply) => {
+    const { extra, p: fp } = leadFilter(req.session.admin)
+    const fWhere = extra ? `WHERE 1=1 ${extra}` : ''
+
     const [[totals]] = await db.query(`
       SELECT
         COUNT(*) AS total_leads,
@@ -102,41 +154,45 @@ module.exports = async function adminPlugin(fastify, opts) {
         SUM(CASE WHEN clicked_line=1 OR clicked_facebook=1 THEN 1 ELSE 0 END) AS total_clicked,
         SUM(CASE WHEN status='new'       THEN 1 ELSE 0 END) AS new_count,
         SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS contacted_count,
-        SUM(CASE WHEN status='converted' THEN 1 ELSE 0 END) AS converted_count
-      FROM leads
-    `).catch(() => [[{
+        SUM(CASE WHEN status='converted' THEN 1 ELSE 0 END) AS converted_count,
+        SUM(CASE WHEN funnel_stage='cold' THEN 1 ELSE 0 END) AS cold_count,
+        SUM(CASE WHEN funnel_stage='warm' THEN 1 ELSE 0 END) AS warm_count,
+        SUM(CASE WHEN funnel_stage='hot'  THEN 1 ELSE 0 END) AS hot_count
+        ${req.session.admin.role === 'affiliate' ? `,
+        SUM(CASE WHEN commission_amount IS NOT NULL AND commission_paid=0 THEN commission_amount ELSE 0 END) AS pending_commission,
+        SUM(CASE WHEN commission_paid=1 THEN commission_amount ELSE 0 END) AS paid_commission` : ''}
+      FROM leads ${fWhere}
+    `, fp).catch(() => [[{
       total_leads:0, today_leads:0, month_leads:0,
       total_line_clicks:0, total_fb_clicks:0, total_clicked:0,
-      new_count:0, contacted_count:0, converted_count:0
+      new_count:0, contacted_count:0, converted_count:0,
+      cold_count:0, warm_count:0, hot_count:0
     }]])
 
     const [typeBreakdown] = await db.query(
-      `SELECT insurance_type, COUNT(*) AS cnt FROM leads GROUP BY insurance_type ORDER BY cnt DESC`
+      `SELECT insurance_type, COUNT(*) AS cnt FROM leads ${fWhere} GROUP BY insurance_type ORDER BY cnt DESC`, fp
     ).catch(() => [[]])
 
     const [dailyStats] = await db.query(
       `SELECT DATE(created_at) AS day, COUNT(*) AS cnt
-       FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-       GROUP BY DATE(created_at) ORDER BY day ASC`
-    ).catch(() => [[]])
-
-    const [topProvinces] = await db.query(
-      `SELECT province, COUNT(*) AS cnt FROM leads GROUP BY province ORDER BY cnt DESC LIMIT 5`
+       FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) ${extra}
+       GROUP BY DATE(created_at) ORDER BY day ASC`, fp
     ).catch(() => [[]])
 
     const [topBrands] = await db.query(
-      `SELECT brand AS car_brand, COUNT(*) AS cnt FROM leads GROUP BY brand ORDER BY cnt DESC LIMIT 5`
+      `SELECT COALESCE(NULLIF(brand,''), 'ไม่ระบุ') AS car_brand, COUNT(*) AS cnt
+       FROM leads ${fWhere} GROUP BY COALESCE(NULLIF(brand,''), 'ไม่ระบุ') ORDER BY cnt DESC LIMIT 5`, fp
     ).catch(() => [[]])
 
     const [recentLeads] = await db.query(
       `SELECT id, token, brand, model, year, insurance_type, source,
               name, phone, best_price, clicked_line, clicked_facebook, status, created_at
-       FROM leads ORDER BY created_at DESC LIMIT 10`
+       FROM leads ${fWhere} ORDER BY created_at DESC LIMIT 10`, fp
     ).catch(() => [[]])
 
     return av(reply, 'dashboard.ejs', {
       title: 'Dashboard', activePage: 'dashboard', admin: req.session.admin,
-      totals, typeBreakdown, dailyStats, topProvinces, topBrands, recentLeads
+      totals, typeBreakdown, dailyStats, topBrands, recentLeads
     })
   })
 
@@ -147,31 +203,52 @@ module.exports = async function adminPlugin(fastify, opts) {
     const page   = Math.max(1, parseInt(req.query.page) || 1)
     const limit  = 20
     const offset = (page - 1) * limit
-    const { q = '', status = '', source = '' } = req.query
+    const { q = '', status = '', source = '', funnel_stage = '' } = req.query
 
-    let where = 'WHERE 1=1'; const p = []
-    if (q)      { where += ' AND (name LIKE ? OR phone LIKE ? OR brand LIKE ? OR model LIKE ? OR license_plate LIKE ?)'; p.push(`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`) }
-    if (status) { where += ' AND status=?'; p.push(status) }
-    if (source) { where += ' AND source=?'; p.push(source) }
+    const { extra, p: fp } = leadFilter(req.session.admin)
+    let where = `WHERE 1=1 ${extra}`; const p = [...fp]
+    if (q)            { where += ' AND (l.name LIKE ? OR l.phone LIKE ? OR l.brand LIKE ? OR l.model LIKE ?)'; p.push(`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`) }
+    if (status)       { where += ' AND l.status=?'; p.push(status) }
+    if (source)       { where += ' AND l.source=?'; p.push(source) }
+    if (funnel_stage) { where += ' AND l.funnel_stage=?'; p.push(funnel_stage) }
 
     const [[{ total }]] = await db.query(
-      `SELECT COUNT(*) AS total FROM leads ${where}`, p
+      `SELECT COUNT(*) AS total FROM leads l ${where}`, p
     ).catch(() => [[{ total: 0 }]])
 
     const [leads] = await db.query(
-      `SELECT id, token, brand, model, year, license_plate, province,
-              insurance_type, source, utm_campaign,
-              name, phone, best_price,
-              clicked_line, clicked_facebook, status, created_at
-       FROM leads ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT l.id, l.token, l.brand, l.model, l.year, l.province,
+              l.insurance_type, l.funnel_stage, l.lead_type, l.source, l.utm_campaign,
+              l.name, l.phone, l.best_price,
+              l.clicked_line, l.clicked_facebook, l.status, l.created_at,
+              l.commission_amount, l.commission_paid,
+              a.slug AS aff_slug, a.name AS aff_name
+       FROM leads l
+       LEFT JOIN affiliates a ON a.id = l.affiliate_id
+       ${where} ORDER BY l.created_at DESC LIMIT ? OFFSET ?`,
       [...p, limit, offset]
     ).catch(() => [[]])
 
     return av(reply, 'leads.ejs', {
       title: 'Leads ลูกค้า', activePage: 'leads', admin: req.session.admin,
       leads, total, page, totalPages: Math.ceil(total / limit),
-      filters: { q, status, source }
+      filters: { q, status, source, funnel_stage }
     })
+  })
+
+  fastify.get('/leads/:id/detail', async (req, reply) => {
+    const id = parseInt(req.params.id)
+    if (!id) return reply.code(400).send({ error: 'invalid id' })
+    const [[lead]] = await db.query(
+      `SELECT id, brand, model, year, province, insurance_type, funnel_stage, lead_type,
+              source, utm_campaign, utm_medium, utm_content,
+              name, phone, best_price, clicked_line, clicked_facebook, status, note,
+              visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy,
+              query_params, created_at
+       FROM leads WHERE id = ?`, [id]
+    )
+    if (!lead) return reply.code(404).send({ error: 'not found' })
+    return reply.send({ lead })
   })
 
   fastify.post('/leads/:id/note', async (req, reply) => {
@@ -186,43 +263,16 @@ module.exports = async function adminPlugin(fastify, opts) {
     const { status } = req.body
     if (['new','contacted','converted','lost'].includes(status)) {
       await db.query('UPDATE leads SET status=?, updated_at=NOW() WHERE id=?', [status, req.params.id])
+      if (status === 'converted') await calcCommission(req.params.id)
     }
     return reply.redirect('/admin/leads')
-  })
-
-  // ============================================================
-  // PROVINCES
-  // ============================================================
-  fastify.get('/provinces', async (req, reply) => {
-    const [provinces] = await db.query('SELECT * FROM provinces ORDER BY name')
-    const msgs = { added:'เพิ่มจังหวัดสำเร็จ', updated:'แก้ไขสำเร็จ', deleted:'ลบสำเร็จ' }
-    return av(reply, 'provinces.ejs', {
-      title: 'จัดการจังหวัด', activePage: 'provinces', admin: req.session.admin,
-      provinces, msg: msgs[req.query.msg] || ''
-    })
-  })
-
-  fastify.post('/provinces/add', async (req, reply) => {
-    const { name, risk_factor } = req.body || {}
-    if (name?.trim()) await db.query('INSERT INTO provinces (name, risk_factor) VALUES (?,?)', [name.trim(), parseFloat(risk_factor)||1.0])
-    return reply.redirect('/admin/provinces?msg=added')
-  })
-
-  fastify.post('/provinces/:id/edit', async (req, reply) => {
-    const { name, risk_factor } = req.body || {}
-    await db.query('UPDATE provinces SET name=?, risk_factor=? WHERE id=?', [name.trim(), parseFloat(risk_factor), req.params.id])
-    return reply.redirect('/admin/provinces?msg=updated')
-  })
-
-  fastify.post('/provinces/:id/delete', async (req, reply) => {
-    await db.query('DELETE FROM provinces WHERE id=?', [req.params.id])
-    return reply.redirect('/admin/provinces?msg=deleted')
   })
 
   // ============================================================
   // SETTINGS
   // ============================================================
   fastify.get('/settings', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
     const [rows] = await db.query('SELECT * FROM app_settings')
     const settings = {}
     rows.forEach(r => { settings[r.key] = r.value })
@@ -233,8 +283,11 @@ module.exports = async function adminPlugin(fastify, opts) {
   })
 
   fastify.post('/settings', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
     const keys = ['class1_rate','class1_min','class2plus_rate','class2plus_min','class3plus_rate','class3plus_min',
-                   'site_phone','site_email','line_oa_url','facebook_url','line_admin_user_id']
+                   'site_phone','site_email','line_oa_url','facebook_url','line_admin_user_id',
+                   'theme_sidebar_bg','theme_accent','theme_content_bg',
+                   'commission_base','broker_fee_rate']
     for (const k of keys) {
       if (req.body[k] !== undefined) {
         await db.query(
@@ -395,10 +448,17 @@ module.exports = async function adminPlugin(fastify, opts) {
   fastify.get('/admins', async (req, reply) => {
     // superadmin only
     if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
-    const [admins] = await db.query('SELECT id, username, full_name, role, last_login, created_at FROM admin_users ORDER BY created_at DESC')
+    const [admins] = await db.query(`
+      SELECT au.id, au.username, au.full_name, au.role, au.last_login, au.created_at,
+             a.slug AS aff_slug, a.name AS aff_name
+      FROM admin_users au
+      LEFT JOIN affiliates a ON a.id = au.affiliate_id
+      ORDER BY au.created_at DESC
+    `)
+    const [affiliates] = await db.query('SELECT id, slug, name FROM affiliates WHERE is_active=1 ORDER BY name').catch(() => [[]])
     return av(reply, 'admins.ejs', {
       title: 'จัดการผู้ดูแลระบบ', activePage: 'admins', admin: req.session.admin,
-      admins, msg: req.query.msg || '', error: req.query.error || ''
+      admins, affiliates, msg: req.query.msg || '', error: req.query.error || ''
     })
   })
 
@@ -410,10 +470,12 @@ module.exports = async function adminPlugin(fastify, opts) {
     }
     const [exist] = await db.query('SELECT id FROM admin_users WHERE username=?', [username.trim()])
     if (exist.length) return reply.redirect('/admin/admins?error=username_taken')
-    const hash = await bcrypt.hash(password, 10)
+    const hash      = await bcrypt.hash(password, 10)
+    const cleanRole = ['superadmin','agent','affiliate'].includes(role) ? role : 'agent'
+    const affId     = (cleanRole === 'affiliate' && req.body.affiliate_id) ? parseInt(req.body.affiliate_id) : null
     await db.query(
-      'INSERT INTO admin_users (username, password_hash, full_name, role) VALUES (?,?,?,?)',
-      [username.trim(), hash, full_name?.trim() || username.trim(), ['superadmin','agent'].includes(role) ? role : 'agent']
+      'INSERT INTO admin_users (username, password_hash, full_name, role, affiliate_id) VALUES (?,?,?,?,?)',
+      [username.trim(), hash, full_name?.trim() || username.trim(), cleanRole, affId]
     )
     await audit.log(req.session.admin?.username, 'add_admin', 'admin_user', null, `เพิ่ม admin: ${username.trim()}`, req.ip)
     return reply.redirect('/admin/admins?msg=added')
@@ -438,6 +500,74 @@ module.exports = async function adminPlugin(fastify, opts) {
     await db.query('UPDATE admin_users SET password_hash=? WHERE id=?', [hash, req.params.id])
     await audit.log(req.session.admin?.username, 'reset_password', 'admin_user', req.params.id, 'รีเซ็ตรหัสผ่าน', req.ip)
     return reply.redirect('/admin/admins?msg=password_reset')
+  })
+
+  // ============================================================
+  // AFFILIATES
+  // ============================================================
+  fastify.get('/affiliates', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
+    const [affiliates] = await db.query(`
+      SELECT a.*,
+        COUNT(l.id) AS total_leads,
+        SUM(CASE WHEN l.status='converted' THEN 1 ELSE 0 END) AS converted_leads,
+        SUM(CASE WHEN l.commission_paid=0 AND l.commission_amount IS NOT NULL THEN l.commission_amount ELSE 0 END) AS pending_commission,
+        SUM(CASE WHEN l.commission_paid=1 THEN l.commission_amount ELSE 0 END) AS paid_commission,
+        au.username AS admin_username
+      FROM affiliates a
+      LEFT JOIN leads l ON l.affiliate_id = a.id
+      LEFT JOIN admin_users au ON au.affiliate_id = a.id AND au.role='affiliate'
+      GROUP BY a.id
+      ORDER BY a.created_at DESC
+    `).catch(() => [[]])
+    return av(reply, 'affiliates.ejs', {
+      title: 'จัดการ Affiliates', activePage: 'affiliates', admin: req.session.admin,
+      affiliates, msg: req.query.msg || '', error: req.query.error || ''
+    })
+  })
+
+  fastify.post('/affiliates/add', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
+    const { slug, name, phone, commission_rate } = req.body || {}
+    if (!slug?.trim() || !name?.trim()) return reply.redirect('/admin/affiliates?error=invalid_input')
+    const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+    if (!cleanSlug) return reply.redirect('/admin/affiliates?error=invalid_slug')
+    const [exist] = await db.query('SELECT id FROM affiliates WHERE slug=?', [cleanSlug])
+    if (exist.length) return reply.redirect('/admin/affiliates?error=slug_taken')
+    const rate = Math.min(100, Math.max(0, parseFloat(commission_rate) || 0))
+    await db.query(
+      'INSERT INTO affiliates (slug, name, phone, commission_rate) VALUES (?,?,?,?)',
+      [cleanSlug, name.trim(), phone?.trim() || null, rate]
+    )
+    await audit.log(req.session.admin?.username, 'add_affiliate', 'affiliates', null, `เพิ่ม affiliate: ${cleanSlug}`, req.ip)
+    return reply.redirect('/admin/affiliates?msg=added')
+  })
+
+  fastify.post('/affiliates/:id/edit', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
+    const { name, phone, commission_rate } = req.body || {}
+    const rate = Math.min(100, Math.max(0, parseFloat(commission_rate) || 0))
+    await db.query(
+      'UPDATE affiliates SET name=?, phone=?, commission_rate=? WHERE id=?',
+      [name?.trim() || 'ไม่ระบุ', phone?.trim() || null, rate, req.params.id]
+    )
+    return reply.redirect('/admin/affiliates?msg=updated')
+  })
+
+  fastify.post('/affiliates/:id/toggle', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
+    await db.query('UPDATE affiliates SET is_active = 1 - is_active WHERE id=?', [req.params.id])
+    return reply.redirect('/admin/affiliates?msg=updated')
+  })
+
+  fastify.post('/affiliates/:id/pay-all', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
+    await db.query(
+      'UPDATE leads SET commission_paid=1 WHERE affiliate_id=? AND commission_amount IS NOT NULL AND commission_paid=0',
+      [req.params.id]
+    )
+    await audit.log(req.session.admin?.username, 'pay_commission', 'affiliates', req.params.id, 'Mark paid commission', req.ip)
+    return reply.redirect('/admin/affiliates?msg=paid')
   })
 
   // ============================================================

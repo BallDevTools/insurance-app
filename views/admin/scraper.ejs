@@ -1,127 +1,130 @@
-<div class="page-header">
-  <h1>Scraper Dashboard</h1>
-  <p class="text-muted">ดึงข้อมูลประกันจาก insure.724.co.th</p>
+<!-- STAT CARDS -->
+<div class="adm-stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="adm-stat adm-stat-blue">
+    <div class="adm-stat-icon"><i data-lucide="car"></i></div>
+    <div>
+      <div class="adm-stat-val"><%= stats.counts.brands || 0 %></div>
+      <div class="adm-stat-lbl">ยี่ห้อรถ</div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-purple">
+    <div class="adm-stat-icon"><i data-lucide="layers"></i></div>
+    <div>
+      <div class="adm-stat-val"><%= stats.counts.models || 0 %></div>
+      <div class="adm-stat-lbl">รุ่นรถ</div>
+    </div>
+  </div>
+  <div class="adm-stat adm-stat-green">
+    <div class="adm-stat-icon"><i data-lucide="package"></i></div>
+    <div>
+      <div class="adm-stat-val"><%= stats.counts.packages || 0 %></div>
+      <div class="adm-stat-lbl">แพ็กเกจประกัน</div>
+    </div>
+  </div>
 </div>
 
-<!-- Stats Cards -->
-<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.5rem">
-  <div class="stat-card">
-    <div class="stat-number"><%= stats.counts.brands || 0 %></div>
-    <div class="stat-label">ยี่ห้อรถ</div>
+<div class="adm-stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="adm-stat adm-stat-green">
+    <div class="adm-stat-icon"><i data-lucide="check-circle-2"></i></div>
+    <div>
+      <div class="adm-stat-val" style="color:#059669"><%= stats.counts.done || 0 %></div>
+      <div class="adm-stat-lbl">Done</div>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-number"><%= stats.counts.models || 0 %></div>
-    <div class="stat-label">รุ่นรถ</div>
+  <div class="adm-stat adm-stat-orange">
+    <div class="adm-stat-icon"><i data-lucide="clock"></i></div>
+    <div>
+      <div class="adm-stat-val" style="color:#d97706"><%= stats.counts.pending || 0 %></div>
+      <div class="adm-stat-lbl">Pending</div>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-number"><%= stats.counts.packages || 0 %></div>
-    <div class="stat-label">แพ็กเกจประกัน</div>
-  </div>
-</div>
-
-<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:2rem">
-  <div class="stat-card" style="border-left:4px solid #10b981">
-    <div class="stat-number" style="color:#10b981"><%= stats.counts.done || 0 %></div>
-    <div class="stat-label">รายการที่ done</div>
-  </div>
-  <div class="stat-card" style="border-left:4px solid #f59e0b">
-    <div class="stat-number" style="color:#f59e0b"><%= stats.counts.pending || 0 %></div>
-    <div class="stat-label">รายการ pending</div>
-  </div>
-  <div class="stat-card" style="border-left:4px solid #ef4444">
-    <div class="stat-number" style="color:#ef4444"><%= stats.counts.errors || 0 %></div>
-    <div class="stat-label">รายการ error</div>
+  <div class="adm-stat" style="border-top-color:#dc2626">
+    <div class="adm-stat-icon" style="background:rgba(220,38,38,.1);color:#dc2626"><i data-lucide="alert-circle"></i></div>
+    <div>
+      <div class="adm-stat-val" style="color:#dc2626"><%= stats.counts.errors || 0 %></div>
+      <div class="adm-stat-lbl">Errors</div>
+    </div>
   </div>
 </div>
 
 <!-- Control Panel -->
-<div class="card" style="margin-bottom:1.5rem">
-  <div class="card-header">
-    <h2 class="card-title">ควบคุม Scraper</h2>
-    <span id="status-badge" class="badge <%= running ? 'badge-success' : 'badge-secondary' %>">
-      <%= running ? '● กำลังรัน' : '○ หยุด' %>
+<div class="adm-card">
+  <div class="adm-card-header">
+    <div class="adm-card-title">ควบคุม Scraper</div>
+    <span id="status-badge" class="adm-scraper-badge <%= running ? 'running' : 'idle' %>">
+      <i data-lucide="<%= running ? 'loader' : 'circle'%>" class="adm-scraper-badge-icon"></i>
+      <%= running ? 'กำลังรัน' : 'หยุด' %>
     </span>
   </div>
-  <div class="card-body" style="display:flex;gap:1rem;flex-wrap:wrap">
-    <button id="btn-start" class="btn btn-primary" <%= running ? 'disabled' : '' %> onclick="scraperStart()">
-      ▶ เริ่ม Scrape
+  <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+    <button id="btn-start" class="adm-btn adm-btn-primary" <%= running ? 'disabled' : '' %> onclick="scraperStart()">
+      <i data-lucide="play"></i> เริ่ม Scrape
     </button>
-    <button id="btn-retry" class="btn btn-warning" <%= (running || stats.counts.errors == 0) ? 'disabled' : '' %> onclick="scraperRetry()">
-      ↻ Retry เฉพาะที่ Error (<%= stats.counts.errors || 0 %>)
+    <button id="btn-retry" class="adm-btn" style="background:#d97706;color:#fff" <%= (running || !stats.counts.errors) ? 'disabled' : '' %> onclick="scraperRetry()">
+      <i data-lucide="rotate-ccw"></i> Retry Error (<%= stats.counts.errors || 0 %>)
     </button>
-    <button id="btn-stop" class="btn btn-danger" onclick="scraperStop()">
-      ■ หยุด
+    <button id="btn-stop" class="adm-btn" style="background:#dc2626;color:#fff" onclick="scraperStop()">
+      <i data-lucide="square"></i> หยุด
     </button>
-    <button id="btn-reset" class="btn btn-secondary" <%= running ? 'disabled' : '' %>
+    <button id="btn-reset" class="adm-btn adm-btn-ghost" <%= running ? 'disabled' : '' %>
       onclick="if(confirm('Reset progress ทั้งหมด? scrape ครั้งหน้าจะรัน full scan')) scraperReset()">
-      ↺ Reset Progress
+      <i data-lucide="refresh-cw"></i> Reset Progress
     </button>
-    <span style="color:#6b7280;font-size:.85rem;align-self:center">
-      Cron: ทุกคืน 02:00 น. (auto)
-    </span>
+    <span style="color:var(--gray-400);font-size:.82rem;align-self:center">Cron: ทุกคืน 02:00 น.</span>
   </div>
 </div>
 
 <!-- Live Log -->
-<div class="card" style="margin-bottom:1.5rem">
-  <div class="card-header">
-    <h2 class="card-title">Live Log</h2>
-    <label style="font-size:.85rem;color:#6b7280">
+<div class="adm-card">
+  <div class="adm-card-header">
+    <div class="adm-card-title">Live Log</div>
+    <label style="font-size:.82rem;color:var(--gray-500);display:flex;align-items:center;gap:.4rem;cursor:pointer">
       <input type="checkbox" id="auto-scroll" checked> Auto scroll
     </label>
   </div>
-  <div id="log-box" style="
-    background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:.8rem;
-    padding:1rem;height:300px;overflow-y:auto;border-radius:0 0 8px 8px;line-height:1.6
-  ">
-    <% logs.forEach(line => { %>
-      <div><%= line %></div>
-    <% }) %>
-    <% if (logs.length === 0) { %>
-      <div style="color:#64748b">ยังไม่มี log — กด "เริ่ม Scrape" เพื่อเริ่มต้น</div>
-    <% } %>
+  <div id="log-box" class="adm-scraper-log">
+    <% logs.forEach(line => { %><div><%= line %></div><% }) %>
+    <% if (!logs.length) { %><div style="color:#475569">ยังไม่มี log — กด "เริ่ม Scrape" เพื่อเริ่มต้น</div><% } %>
   </div>
 </div>
 
 <!-- Run History -->
-<div class="card">
-  <div class="card-header"><h2 class="card-title">ประวัติการรัน</h2></div>
-  <div class="card-body" style="padding:0">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>ประเภท</th>
-          <th>เริ่ม</th>
-          <th>สิ้นสุด</th>
-          <th>Scraped</th>
-          <th>Errors</th>
-          <th>สถานะ</th>
-        </tr>
-      </thead>
+<div class="adm-card adm-card-full">
+  <div class="adm-card-title">ประวัติการรัน</div>
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead><tr><th>#</th><th>ประเภท</th><th>เริ่ม</th><th>สิ้นสุด</th><th>Scraped</th><th>Errors</th><th>สถานะ</th></tr></thead>
       <tbody>
         <% (stats.logs || []).forEach(log => { %>
           <tr>
             <td><%= log.id %></td>
-            <td><%= log.run_type %></td>
-            <td><%= log.started_at ? new Date(log.started_at).toLocaleString('th-TH') : '-' %></td>
-            <td><%= log.finished_at ? new Date(log.finished_at).toLocaleString('th-TH') : '-' %></td>
-            <td><%= log.total_scraped %></td>
-            <td><%= log.total_errors %></td>
+            <td><span class="adm-plate"><%= log.run_type %></span></td>
+            <td class="adm-dt"><%= log.started_at ? new Date(log.started_at).toLocaleString('th-TH') : '-' %></td>
+            <td class="adm-dt"><%= log.finished_at ? new Date(log.finished_at).toLocaleString('th-TH') : '-' %></td>
+            <td><strong><%= log.total_scraped %></strong></td>
+            <td><%= log.total_errors > 0 ? `<span style="color:#dc2626;font-weight:700">${log.total_errors}</span>` : '0' %></td>
             <td>
-              <span class="badge badge-<%= log.status === 'done' ? 'success' : log.status === 'running' ? 'warning' : log.status === 'stopped' ? 'secondary' : 'danger' %>">
-                <%= log.status %>
-              </span>
+              <% const sc = {done:'adm-status-converted',running:'adm-status-new',stopped:'adm-status-lost',error:'adm-status-lost'} %>
+              <% const sl = {done:'สำเร็จ',running:'กำลังรัน',stopped:'หยุด',error:'Error'} %>
+              <span class="adm-status <%= sc[log.status]||'adm-status-new' %>"><%= sl[log.status]||log.status %></span>
             </td>
           </tr>
         <% }) %>
-        <% if (!stats.logs || stats.logs.length === 0) { %>
-          <tr><td colspan="7" style="text-align:center;color:#9ca3af">ยังไม่มีประวัติ</td></tr>
+        <% if (!stats.logs || !stats.logs.length) { %>
+          <tr><td colspan="7" class="adm-empty-cell">ยังไม่มีประวัติ</td></tr>
         <% } %>
       </tbody>
     </table>
   </div>
 </div>
+
+<style>
+.adm-scraper-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.3rem .75rem; border-radius:999px; font-size:.8rem; font-weight:600; }
+.adm-scraper-badge.running { background:#d1fae5; color:#065f46; }
+.adm-scraper-badge.idle    { background:var(--gray-100); color:var(--gray-500); }
+.adm-scraper-badge-icon svg { width:13px; height:13px; }
+.adm-scraper-log { background:#0f172a; color:#e2e8f0; font-family:monospace; font-size:.8rem; padding:1rem; height:300px; overflow-y:auto; border-radius:var(--radius-sm); line-height:1.65; }
+</style>
 
 <script>
 const csrfToken = '<%= csrfToken %>'
@@ -136,66 +139,28 @@ async function apiPost(path) {
   return res.json()
 }
 
-async function scraperStart() {
-  document.getElementById('btn-start').disabled = true
-  const r = await apiPost('/start')
-  alert(r.message)
-  startPolling()
-}
-
-async function scraperRetry() {
-  document.getElementById('btn-retry').disabled = true
-  const r = await apiPost('/retry-errors')
-  alert(r.message)
-  startPolling()
-}
-
-async function scraperStop() {
-  const r = await apiPost('/stop')
-  alert(r.message)
-}
-
-async function scraperReset() {
-  const r = await apiPost('/reset-progress')
-  alert(r.message)
-}
+async function scraperStart()  { document.getElementById('btn-start').disabled = true; const r = await apiPost('/start'); alert(r.message); startPolling() }
+async function scraperRetry()  { document.getElementById('btn-retry').disabled = true; const r = await apiPost('/retry-errors'); alert(r.message); startPolling() }
+async function scraperStop()   { const r = await apiPost('/stop'); alert(r.message) }
+async function scraperReset()  { const r = await apiPost('/reset-progress'); alert(r.message) }
 
 function startPolling() {
   if (pollInterval) clearInterval(pollInterval)
   pollInterval = setInterval(async () => {
     const res = await fetch('/admin/scraper/status').then(r => r.json())
-
-    // update badge
     const badge = document.getElementById('status-badge')
-    badge.textContent = res.running ? '● กำลังรัน' : '○ หยุด'
-    badge.className = 'badge ' + (res.running ? 'badge-success' : 'badge-secondary')
-
-    // update buttons
+    badge.className = 'adm-scraper-badge ' + (res.running ? 'running' : 'idle')
+    badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg> ${res.running ? 'กำลังรัน' : 'หยุด'}`
     document.getElementById('btn-start').disabled = res.running
     const btnRetry = document.getElementById('btn-retry')
-    if (btnRetry) {
-      btnRetry.disabled = res.running || res.stats.errors == 0
-      btnRetry.textContent = `↻ Retry เฉพาะที่ Error (${res.stats.errors || 0})`
-    }
+    if (btnRetry) { btnRetry.disabled = res.running || res.stats.errors == 0; btnRetry.innerHTML = `<i data-lucide="rotate-ccw"></i> Retry Error (${res.stats.errors||0})` }
     document.getElementById('btn-stop').disabled = !res.running
     document.getElementById('btn-reset').disabled = res.running
-
-    // update log
     const box = document.getElementById('log-box')
-    box.innerHTML = res.logs.map(l => `<div>${l}</div>`).join('') || '<div style="color:#64748b">ยังไม่มี log</div>'
-    if (document.getElementById('auto-scroll').checked) {
-      box.scrollTop = box.scrollHeight
-    }
-
-    if (!res.running) {
-      clearInterval(pollInterval)
-      pollInterval = null
-    }
+    box.innerHTML = res.logs.map(l => `<div>${l}</div>`).join('') || '<div style="color:#475569">ยังไม่มี log</div>'
+    if (document.getElementById('auto-scroll').checked) box.scrollTop = box.scrollHeight
+    if (!res.running) { clearInterval(pollInterval); pollInterval = null }
   }, 3000)
 }
-
-// เริ่ม poll ทันทีถ้ากำลังรันอยู่
-<% if (running) { %>
-startPolling()
-<% } %>
+<% if (running) { %>startPolling()<% } %>
 </script>

@@ -15,9 +15,10 @@ function pushLog(msg) {
 
 module.exports = async function scraperPlugin(fastify, opts) {
 
-  // Auth guard
+  // Auth guard — superadmin only
   fastify.addHook('preHandler', async (req, reply) => {
     if (!req.session?.admin) return reply.redirect('/admin/login')
+    if (req.session.admin.role !== 'superadmin') return reply.redirect('/admin')
   })
 
   // ============================================================

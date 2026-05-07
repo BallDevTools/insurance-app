@@ -1,17 +1,36 @@
-﻿<section class="front-page-head">
+<section class="front-page-head">
   <div class="container">
     <div class="front-page-head-row">
       <a href="/" class="front-back-link">กลับไปหน้าแรก</a>
       <span class="front-pill">Compare Plans</span>
     </div>
     <h1>เปรียบเทียบแผนประกันให้เห็นชัดในหน้าเดียว</h1>
-    <p class="front-page-sub">เลือกข้อมูลรถของคุณเพื่อดูตัวเลือกแต่ละระดับความคุ้มครอง พร้อมราคาเริ่มต้นและจุดเด่นของแต่ละแผน</p>
+    <p class="front-page-sub">เลือกข้อมูลรถของคุณ แล้วเลือกว่าต้องการเทียบทุกชั้น หรือเทียบบริษัทในชั้นเดียวกัน</p>
   </div>
 </section>
 
 <section class="front-compare-shell-v2">
   <div class="container">
-    <form action="/compare" method="GET" class="front-compare-filter-v2">
+
+    <!-- Mode Tabs -->
+    <% const isSameClass = !!(selected.insurance_class && (comparisons === null)) %>
+    <div class="cmp-mode-tabs">
+      <button
+        class="cmp-mode-tab <%= !isSameClass ? 'active' : '' %>"
+        onclick="switchMode('cross')"
+        type="button">
+        ⚖️ เทียบทุกชั้นประกัน
+      </button>
+      <button
+        class="cmp-mode-tab <%= isSameClass ? 'active' : '' %>"
+        onclick="switchMode('same')"
+        type="button">
+        🏢 เทียบบริษัทในชั้นเดียวกัน
+      </button>
+    </div>
+
+    <!-- Filter Form -->
+    <form action="/compare" method="GET" class="front-compare-filter-v2" id="compareForm">
       <div class="front-form-grid front-form-grid-compare">
         <div class="front-field">
           <label>ยี่ห้อรถ</label>
@@ -54,7 +73,7 @@
         <div class="front-field">
           <label>จังหวัด</label>
           <div class="select-wrapper">
-            <select name="province" required>
+            <select name="province">
               <option value="">เลือกจังหวัด</option>
               <% provinces.forEach(p => { %>
                 <option value="<%= p.name %>" <%= selected.province === p.name ? 'selected' : '' %>><%= p.name %></option>
@@ -62,14 +81,30 @@
             </select>
           </div>
         </div>
+
+        <!-- ชั้นประกัน (แสดงเฉพาะ mode B) -->
+        <div class="front-field" id="classField" style="display:<%= isSameClass ? 'block' : 'none' %>">
+          <label>ชั้นประกัน</label>
+          <div class="select-wrapper">
+            <select name="insurance_class" id="insuranceClassSelect">
+              <option value="">เลือกชั้นประกัน</option>
+              <option value="class1"    <%= selected.insurance_class === 'class1'    ? 'selected' : '' %>>ประกันชั้น 1</option>
+              <option value="class2plus" <%= selected.insurance_class === 'class2plus' ? 'selected' : '' %>>ประกันชั้น 2+</option>
+              <option value="class3plus" <%= selected.insurance_class === 'class3plus' ? 'selected' : '' %>>ประกันชั้น 3+</option>
+            </select>
+          </div>
+        </div>
       </div>
+
+      <input type="hidden" name="_mode" id="modeInput" value="<%= isSameClass ? 'same' : 'cross' %>">
 
       <div class="front-cta-row front-cta-row-compare">
         <button type="submit" class="front-primary-btn">เปรียบเทียบราคา</button>
       </div>
     </form>
 
-    <% if (comparisons && selectedModel) { %>
+    <!-- ===== RESULTS ===== -->
+    <% if (selectedModel && (comparisons || sameClassPackages)) { %>
       <div class="front-summary-card front-summary-card-compare">
         <div class="front-summary-item">
           <small>รถที่เลือก</small>
@@ -79,87 +114,240 @@
           <small>ปีรถ</small>
           <strong><%= selected.year %></strong>
         </div>
+        <% if (selected.province) { %>
         <div class="front-summary-item">
           <small>จังหวัด</small>
           <strong><%= selected.province %></strong>
         </div>
+        <% } %>
       </div>
 
-      <div class="front-compare-grid-v2">
-        <% const types = ['class1','class2plus','class3plus'] %>
-        <% const typeLabels = { class1:'ประกันชั้น 1', class2plus:'ประกันชั้น 2+', class3plus:'ประกันชั้น 3+' } %>
-        <% const typeColors = { class1:'#153c3c', class2plus:'#6d5b31', class3plus:'#2f7a55' } %>
+      <% if (sameClassPackages !== null) { %>
+        <!-- ===== MODE B: same-class, multi-company ===== -->
+        <%
+          const classLabelMap = { class1:'ประกันชั้น 1', class2plus:'ประกันชั้น 2+', class3plus:'ประกันชั้น 3+' }
+          const classColorMap = { class1:'#153c3c', class2plus:'#6d5b31', class3plus:'#2f7a55' }
+          const selectedClassLabel = classLabelMap[selected.insurance_class] || ''
+          const selectedClassColor = classColorMap[selected.insurance_class] || '#153c3c'
+        %>
+        <div class="cmp-samecls-header">
+          <span class="front-plan-badge" style="background:<%= selectedClassColor %>"><%= selectedClassLabel %></span>
+          <span class="cmp-samecls-count">พบ <strong><%= sameClassPackages.length %></strong> บริษัท</span>
+        </div>
+
+        <% if (sameClassPackages.length > 0) { %>
+          <div class="front-package-list-v2">
+            <% sameClassPackages.forEach(function(pkg, i) { %>
+              <%
+                var displayPrice = pkg.premium_discounted && parseFloat(pkg.premium_discounted) < parseFloat(pkg.premium_amount)
+                  ? pkg.premium_discounted : pkg.premium_amount
+                var hasCoverage = pkg.coverage && (pkg.coverage.own_vehicle || pkg.coverage.third_party || pkg.coverage.extra)
+                var pkgId = 'cpkg-' + i
+              %>
+              <article class="front-package-card-v2 <%= i === 0 ? 'featured' : '' %>">
+                <div class="front-package-top-v2">
+                  <div>
+                    <span class="front-plan-badge" style="background:<%= selectedClassColor %>">
+                      <%= i === 0 ? 'ราคาดีที่สุด' : '#' + (i+1) %>
+                    </span>
+                    <h3><%= pkg.company_name %></h3>
+                    <p><%= selectedClassLabel %></p>
+                  </div>
+                  <div class="front-package-price-v2">
+                    <% if (pkg.premium_discounted && parseFloat(pkg.premium_discounted) < parseFloat(pkg.premium_amount)) { %>
+                      <small><%= formatNumber(pkg.premium_amount) %> บาท</small>
+                    <% } %>
+                    <strong><%= formatNumber(displayPrice) %></strong>
+                    <span>บาท/ปี</span>
+                  </div>
+                </div>
+
+                <% if (hasCoverage) { %>
+                  <button class="btn-expand" onclick="toggleCoverage('<%= pkgId %>', this)" type="button">ดูความคุ้มครอง</button>
+                  <div id="<%= pkgId %>" class="pkg-coverage-detail" style="display:none">
+                    <% var cov = pkg.coverage %>
+                    <% if (cov.own_vehicle && Object.keys(cov.own_vehicle).length > 0) { %>
+                      <div class="cov-section-title">ความรับผิดต่อรถของคุณ</div>
+                      <table class="cov-table">
+                        <% Object.entries(cov.own_vehicle).forEach(function([k,v]) { %>
+                          <tr><td class="cov-key"><%= k %></td><td class="cov-val"><%= v %></td></tr>
+                        <% }) %>
+                      </table>
+                    <% } %>
+                    <% if (cov.third_party && Object.keys(cov.third_party).length > 0) { %>
+                      <div class="cov-section-title">ความรับผิดต่อบุคคลภายนอก</div>
+                      <table class="cov-table">
+                        <% Object.entries(cov.third_party).forEach(function([k,v]) { %>
+                          <tr><td class="cov-key"><%= k %></td><td class="cov-val"><%= v %></td></tr>
+                        <% }) %>
+                      </table>
+                    <% } %>
+                    <% if (cov.extra && Object.keys(cov.extra).length > 0) { %>
+                      <div class="cov-section-title">ความคุ้มครองเพิ่มเติม</div>
+                      <table class="cov-table">
+                        <% Object.entries(cov.extra).forEach(function([k,v]) { %>
+                          <tr><td class="cov-key"><%= k %></td><td class="cov-val"><%= v %></td></tr>
+                        <% }) %>
+                      </table>
+                    <% } %>
+                  </div>
+                <% } %>
+
+                <div class="pub-pkg-cta-row">
+                  <a href="/compare?brand_id=<%= selected.brand_id %>&model_id=<%= selectedModel.id %>&year=<%= selected.year %>" class="front-secondary-btn">⚖️ เทียบทุกชั้น</a>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <div class="front-empty-card">
+            <h2>ยังไม่พบราคาสำหรับ <%= selectedClassLabel %></h2>
+            <p>ลองเลือกชั้นประกันอื่น หรือติดต่อทีมงานเพื่อเช็คราคาให้</p>
+          </div>
+        <% } %>
+
+      <% } else { %>
+        <!-- ===== MODE A: cross-class (เดิม) ===== -->
+        <div class="front-compare-grid-v2">
+          <% const types = ['class1','class2plus','class3plus'] %>
+          <% const typeLabels = { class1:'ประกันชั้น 1', class2plus:'ประกันชั้น 2+', class3plus:'ประกันชั้น 3+' } %>
+          <% const typeColors = { class1:'#153c3c', class2plus:'#6d5b31', class3plus:'#2f7a55' } %>
+
+          <% types.forEach(type => { %>
+            <% const pkgs = comparisons[type] %>
+            <% const cfg = INSURANCE_TYPES[type] %>
+            <% const minPkg = pkgs.length > 0 ? pkgs[0] : null %>
+            <% const minPrice = minPkg ? parseFloat(minPkg.premium_discounted || minPkg.premium_amount) : null %>
+            <article class="front-compare-card-v2">
+              <div class="front-compare-card-head-v2" style="background:<%= typeColors[type] %>">
+                <span class="front-plan-badge"><%= typeLabels[type] %></span>
+                <% if (minPrice) { %>
+                  <strong><%= formatNumber(minPrice) %></strong>
+                  <small>บาท/ปี</small>
+                <% } else { %>
+                  <strong>ยังไม่มีราคา</strong>
+                  <small>ติดต่อทีมงานเพื่อเช็กต่อ</small>
+                <% } %>
+              </div>
+
+              <div class="front-compare-card-body-v2">
+                <% if (pkgs.length > 0) { %>
+                  <div class="front-compare-mini-list">
+                    <% pkgs.slice(0, 5).forEach(function(pkg, pi) { %>
+                      <div class="front-compare-mini-row">
+                        <span><%= pi === 0 ? 'แนะนำ ' : '' %><%= pkg.company_name %></span>
+                        <strong><%= formatNumber(pkg.premium_discounted || pkg.premium_amount) %></strong>
+                      </div>
+                    <% }) %>
+                    <% if (pkgs.length > 5) { %>
+                      <a href="/compare?brand_id=<%= selected.brand_id %>&model_id=<%= selectedModel.id %>&year=<%= selected.year %>&insurance_class=<%= type %>" class="cmp-see-all-link">
+                        ดูทั้งหมด <%= pkgs.length %> บริษัท →
+                      </a>
+                    <% } %>
+                  </div>
+                <% } else { %>
+                  <p class="front-empty-small">ยังไม่พบข้อมูลสำหรับรุ่น/ปีนี้</p>
+                <% } %>
+
+                <ul class="front-check-list front-check-list-compact">
+                  <% const coverageLabels = {
+                    ownDamage:'คุ้มครองรถของคุณ',
+                    thirdPartyBody:'คุ้มครองบุคคลภายนอก',
+                    thirdPartyProperty:'คุ้มครองทรัพย์สินคู่กรณี',
+                    theft:'ไฟไหม้/โจรกรรม',
+                    flood:'น้ำท่วม',
+                    personalAccident:'อุบัติเหตุส่วนบุคคล',
+                    medicalExpense:'ค่ารักษาพยาบาล'
+                  } %>
+                  <% Object.entries(cfg.coverage).forEach(([key, val]) => { %>
+                    <% if (coverageLabels[key]) { %>
+                      <li class="<%= val === false ? 'muted' : '' %>"><%= coverageLabels[key] %></li>
+                    <% } %>
+                  <% }) %>
+                </ul>
+
+                <% if (pkgs.length > 0) { %>
+                  <a href="/compare?brand_id=<%= selected.brand_id %>&model_id=<%= selectedModel.id %>&year=<%= selected.year %>&insurance_class=<%= type %>" class="front-primary-btn front-btn-block">
+                    เทียบ <%= pkgs.length %> บริษัท →
+                  </a>
+                <% } else { %>
+                  <a href="/" class="front-secondary-btn front-btn-block">กลับไปเช็คราคา</a>
+                <% } %>
+              </div>
+            </article>
+          <% }) %>
+        </div>
 
         <% types.forEach(type => { %>
-          <% const pkgs = comparisons[type] %>
-          <% const cfg = INSURANCE_TYPES[type] %>
-          <% const minPkg = pkgs.length > 0 ? pkgs[0] : null %>
-          <% const minPrice = minPkg ? parseFloat(minPkg.premium_discounted || minPkg.premium_amount) : null %>
-          <article class="front-compare-card-v2">
-            <div class="front-compare-card-head-v2" style="background:<%= typeColors[type] %>">
-              <span class="front-plan-badge"><%= typeLabels[type] %></span>
-              <% if (minPrice) { %>
-                <strong><%= formatNumber(minPrice) %></strong>
-                <small>บาท/ปี</small>
-              <% } else { %>
-                <strong>ยังไม่มีราคา</strong>
-                <small>ติดต่อทีมงานเพื่อเช็กต่อ</small>
-              <% } %>
-            </div>
-
-            <div class="front-compare-card-body-v2">
-              <% if (pkgs.length > 0) { %>
-                <div class="front-compare-mini-list">
-                  <% pkgs.slice(0, 5).forEach(function(pkg, pi) { %>
-                    <div class="front-compare-mini-row">
-                      <span><%= pi === 0 ? 'แนะนำ ' : '' %><%= pkg.company_name %></span>
-                      <strong><%= formatNumber(pkg.premium_discounted || pkg.premium_amount) %></strong>
-                    </div>
-                  <% }) %>
-                </div>
-              <% } else { %>
-                <p class="front-empty-small">ยังไม่พบข้อมูลสำหรับรุ่น/ปีนี้</p>
-              <% } %>
-
-              <ul class="front-check-list front-check-list-compact">
-                <% const coverageLabels = {
-                  ownDamage:'คุ้มครองรถของคุณ',
-                  thirdPartyBody:'คุ้มครองบุคคลภายนอก',
-                  thirdPartyProperty:'คุ้มครองทรัพย์สินคู่กรณี',
-                  theft:'ไฟไหม้/โจรกรรม',
-                  flood:'น้ำท่วม',
-                  personalAccident:'อุบัติเหตุส่วนบุคคล',
-                  medicalExpense:'ค่ารักษาพยาบาล'
-                } %>
-                <% Object.entries(cfg.coverage).forEach(([key, val]) => { %>
-                  <% if (coverageLabels[key]) { %>
-                    <li class="<%= val === false ? 'muted' : '' %>"><%= coverageLabels[key] %></li>
-                  <% } %>
-                <% }) %>
-              </ul>
-
-              <% if (pkgs.length > 0) { %>
-                <a href="#" onclick="event.preventDefault(); document.getElementById('quoteForm_<%= type %>').submit()" class="front-primary-btn front-btn-block">ใช้แผนนี้ต่อ</a>
-              <% } else { %>
-                <a href="/" class="front-secondary-btn front-btn-block">กลับไปเช็คราคา</a>
-              <% } %>
-            </div>
-          </article>
+          <form id="quoteForm_<%= type %>" action="/quote" method="POST" style="display:none">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="car_brand" value="<%= selectedModel.brand_name %>">
+            <input type="hidden" name="car_model" value="<%= selectedModel.model_name %>">
+            <input type="hidden" name="car_model_id" value="<%= selectedModel.id %>">
+            <input type="hidden" name="car_year" value="<%= selected.year %>">
+            <input type="hidden" name="insurance_type" value="<%= type %>">
+          </form>
         <% }) %>
-      </div>
-
-      <% types.forEach(type => { %>
-        <form id="quoteForm_<%= type %>" action="/quote" method="POST" style="display:none">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <input type="hidden" name="car_brand" value="<%= selectedModel.brand_name %>">
-          <input type="hidden" name="car_model" value="<%= selectedModel.model_name %>">
-          <input type="hidden" name="car_model_id" value="<%= selectedModel.id %>">
-          <input type="hidden" name="car_year" value="<%= selected.year %>">
-          <input type="hidden" name="license_plate" value="กข 0000">
-          <input type="hidden" name="province" value="<%= selected.province || 'กรุงเทพมหานคร' %>">
-          <input type="hidden" name="insurance_type" value="<%= type %>">
-        </form>
-      <% }) %>
+      <% } %>
     <% } %>
+
   </div>
 </section>
+
+<script>
+function switchMode(mode) {
+  var classField = document.getElementById('classField')
+  var modeInput  = document.getElementById('modeInput')
+  var classSelect = document.getElementById('insuranceClassSelect')
+  var tabs = document.querySelectorAll('.cmp-mode-tab')
+
+  if (mode === 'same') {
+    classField.style.display = 'block'
+    modeInput.value = 'same'
+    tabs[0].classList.remove('active')
+    tabs[1].classList.add('active')
+  } else {
+    classField.style.display = 'none'
+    modeInput.value = 'cross'
+    classSelect.value = ''
+    tabs[0].classList.add('active')
+    tabs[1].classList.remove('active')
+  }
+}
+
+function toggleCoverage(id, btn) {
+  var el = document.getElementById(id)
+  if (!el) return
+  var open = el.style.display !== 'none'
+  el.style.display = open ? 'none' : 'block'
+  btn.textContent = open ? 'ดูความคุ้มครอง' : 'ซ่อนความคุ้มครอง'
+  btn.classList.toggle('open', !open)
+}
+
+// โหลด models เมื่อเลือก brand
+document.getElementById('car_brand_id').addEventListener('change', function() {
+  var brandId = this.value
+  var modelSelect = document.getElementById('car_model_id')
+  modelSelect.innerHTML = '<option value="">กำลังโหลด...</option>'
+  if (!brandId) { modelSelect.innerHTML = '<option value="">เลือกรุ่นรถ</option>'; return }
+  fetch('/api/models?brand_id=' + brandId)
+    .then(r => r.json())
+    .then(models => {
+      modelSelect.innerHTML = '<option value="">เลือกรุ่นรถ</option>'
+      models.forEach(m => {
+        var opt = document.createElement('option')
+        opt.value = m.id
+        opt.textContent = m.name
+        modelSelect.appendChild(opt)
+      })
+      var def = modelSelect.dataset.defaultModelId
+      if (def) modelSelect.value = def
+    })
+})
+
+// โหลด models ถ้ามี brand_id อยู่แล้ว
+;(function() {
+  var brandId = document.getElementById('car_brand_id').value
+  if (brandId) document.getElementById('car_brand_id').dispatchEvent(new Event('change'))
+})()
+</script>

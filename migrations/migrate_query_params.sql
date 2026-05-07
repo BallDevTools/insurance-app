@@ -1,0 +1,1 @@
+ALTER TABLE leads ADD COLUMN query_params JSON DEFAULT NULL;

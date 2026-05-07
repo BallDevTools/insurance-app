@@ -42,129 +42,58 @@ const convRate  = pct(f.converted,    f.total_leads)
   </div>
 </div>
 
-<!-- MONTHLY CHART -->
+<!-- MONTHLY LINE CHART -->
 <div class="adm-card adm-card-full">
   <div class="adm-card-header">
     <div class="adm-card-title">Leads รายเดือน (12 เดือนล่าสุด)</div>
-    <div style="display:flex;gap:1rem;font-size:.78rem;color:var(--gray-400)">
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--adm-accent);margin-right:.3rem"></span>Leads</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#10b981;margin-right:.3rem"></span>คลิก</span>
+    <div style="display:flex;gap:1.2rem;font-size:.78rem;color:#94a3b8;align-items:center">
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:24px;height:3px;background:#3b82f6;border-radius:2px;display:inline-block"></span>Leads</span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:24px;height:3px;background:#10b981;border-radius:2px;display:inline-block"></span>คลิก</span>
     </div>
   </div>
-  <% if (!monthly.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
-  <% const maxM = Math.max(...monthly.map(m=>m.leads), 1) %>
-  <div class="adm-report-chart">
-    <% monthly.forEach(m=>{ %>
-      <div class="adm-report-bar-group">
-        <div class="adm-report-bars">
-          <div class="adm-report-bar-wrap" title="<%= m.leads %> leads">
-            <div class="adm-report-bar adm-report-bar-leads" style="height:<%= Math.max(4, Math.round(m.leads/maxM*100)) %>%">
-              <% if(m.leads > 0){ %><span class="adm-report-bar-val"><%= m.leads %></span><% } %>
-            </div>
-          </div>
-          <div class="adm-report-bar-wrap" title="<%= m.clicks %> คลิก">
-            <div class="adm-report-bar adm-report-bar-clicks" style="height:<%= Math.max(0, Math.round(m.clicks/maxM*100)) %>%"></div>
-          </div>
-        </div>
-        <div class="adm-report-bar-lbl"><%= m.month_label %></div>
-        <div class="adm-report-bar-sub"><%= m.clicks %> คลิก</div>
-      </div>
-    <% }) %>
+  <div style="height:220px;padding:4px 0 8px">
+    <canvas id="chartMonthly"></canvas>
   </div>
 </div>
 
-<div class="adm-charts">
+<!-- ROW: SOURCE + TYPE DONUTS + 7-DAY BARS -->
+<div class="rpt-grid-3">
 
-  <!-- By Source -->
   <div class="adm-card">
-    <div class="adm-card-title">📡 แยกตามแหล่ง Traffic</div>
-    <% const maxSrc = Math.max(...bySource.map(s=>s.cnt), 1) %>
-    <div class="adm-hbars">
-      <% bySource.forEach(s=>{ %>
-        <div class="adm-hbar-row">
-          <span class="adm-hbar-lbl"><%= SOURCE_MAP[s.source]||s.source||'ไม่ระบุ' %></span>
-          <div class="adm-hbar-track">
-            <div class="adm-hbar-fill" style="width:<%= Math.round(s.cnt/maxSrc*100) %>%"></div>
-          </div>
-          <span class="adm-hbar-val"><%= s.cnt %></span>
-        </div>
-      <% }) %>
-      <% if (!bySource.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
-    </div>
-    <div style="margin-top:.75rem">
-      <% bySource.forEach(s=>{ %>
-        <div class="adm-sub" style="margin-bottom:.2rem">
-          <%= SOURCE_MAP[s.source]||s.source||'ไม่ระบุ' %>: <%= s.cnt %> leads · <%= s.clicks %> คลิก · <%= s.converted %> ปิดงาน
-        </div>
-      <% }) %>
-    </div>
+    <div class="adm-card-title">📡 แหล่ง Traffic</div>
+    <% if (!bySource.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } else { %>
+    <div style="height:200px;margin:8px 0"><canvas id="chartSource"></canvas></div>
+    <div class="rpt-legend" id="legendSource"></div>
+    <% } %>
   </div>
 
-  <!-- By Insurance Type -->
   <div class="adm-card">
-    <div class="adm-card-title">🛡️ แยกตามประเภทประกัน</div>
-    <% const maxType = Math.max(...byType.map(t=>t.cnt), 1) %>
-    <div class="adm-hbars">
-      <% byType.forEach(t=>{ %>
-        <div class="adm-hbar-row">
-          <span class="adm-hbar-lbl">
-            <span class="adm-type-pill adm-type-<%= t.insurance_type %>"><%= TYPE_MAP[t.insurance_type]||t.insurance_type %></span>
-          </span>
-          <div class="adm-hbar-track">
-            <div class="adm-hbar-fill" style="width:<%= Math.round(t.cnt/maxType*100) %>%"></div>
-          </div>
-          <span class="adm-hbar-val"><%= t.cnt %></span>
-        </div>
-      <% }) %>
-      <% if (!byType.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
-    </div>
-    <div style="margin-top:.75rem">
-      <% byType.forEach(t=>{ %>
-        <div class="adm-sub" style="margin-bottom:.2rem">
-          <%= TYPE_MAP[t.insurance_type]||t.insurance_type %>: <%= t.cnt %> leads · <%= t.clicks %> คลิก · <%= pct(t.clicks,t.cnt) %>% click rate
-        </div>
-      <% }) %>
-    </div>
+    <div class="adm-card-title">🛡️ ประเภทประกัน</div>
+    <% if (!byType.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } else { %>
+    <div style="height:200px;margin:8px 0"><canvas id="chartType"></canvas></div>
+    <div class="rpt-legend" id="legendType"></div>
+    <% } %>
   </div>
 
-  <!-- Top Brands -->
-  <div class="adm-card">
-    <div class="adm-card-title">🚗 ยี่ห้อรถยอดนิยม (Top 8)</div>
-    <% const maxBrand = Math.max(...topBrands.map(b=>b.cnt), 1) %>
-    <div class="adm-hbars">
-      <% topBrands.forEach((b,i)=>{ %>
-        <div class="adm-hbar-row">
-          <span class="adm-hbar-lbl"><strong>#<%= i+1 %></strong> <%= b.brand||'ไม่ระบุ' %></span>
-          <div class="adm-hbar-track">
-            <div class="adm-hbar-fill" style="width:<%= Math.round(b.cnt/maxBrand*100) %>%;background:#3b82f6"></div>
-          </div>
-          <span class="adm-hbar-val"><%= b.cnt %></span>
-        </div>
-      <% }) %>
-      <% if (!topBrands.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
-    </div>
-  </div>
-
-  <!-- Daily 7 Days -->
   <div class="adm-card">
     <div class="adm-card-title">📅 7 วันล่าสุด</div>
-    <% const maxDay = Math.max(...daily.map(d=>d.leads), 1) %>
-    <div class="adm-monthly-chart" style="height:140px;align-items:flex-end">
-      <% if (!daily.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } %>
-      <% daily.forEach(d=>{ %>
-        <div class="adm-bar-group" style="flex:1">
-          <div class="adm-bar-track">
-            <div class="adm-bar-fill adm-bar-month" style="height:<%= Math.round(d.leads/maxDay*100) %>%;background:#10b981">
-              <span class="adm-bar-val"><%= d.leads %></span>
-            </div>
-          </div>
-          <div class="adm-bar-lbl adm-bar-month-lbl"><%= d.day_label %></div>
-          <div class="adm-bar-rev adm-sub"><%= d.clicks %>คลิก</div>
-        </div>
-      <% }) %>
-    </div>
+    <% if (!daily.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } else { %>
+    <div style="height:200px;margin:8px 0"><canvas id="chartDaily"></canvas></div>
+    <% } %>
   </div>
 
+</div>
+
+<!-- TOP BRANDS -->
+<div class="adm-card adm-card-full">
+  <div class="adm-card-header">
+    <div class="adm-card-title">🚗 ยี่ห้อรถยอดนิยม (Top 8)</div>
+  </div>
+  <% if (!topBrands.length) { %><div class="adm-empty">ยังไม่มีข้อมูล</div><% } else { %>
+  <div style="height:<%= Math.max(160, topBrands.length * 36) %>px;padding:8px 0">
+    <canvas id="chartBrands"></canvas>
+  </div>
+  <% } %>
 </div>
 
 <!-- RECENT LEADS -->
@@ -176,13 +105,7 @@ const convRate  = pct(f.converted,    f.total_leads)
   <div class="adm-table-wrap">
     <table class="adm-table">
       <thead><tr>
-        <th>รถ / ประกัน</th>
-        <th>ราคาดีสุด</th>
-        <th>ลูกค้า</th>
-        <th>CTA</th>
-        <th>แหล่ง</th>
-        <th>สถานะ</th>
-        <th>วันที่</th>
+        <th>รถ / ประกัน</th><th>ราคาดีสุด</th><th>ลูกค้า</th><th>CTA</th><th>แหล่ง</th><th>สถานะ</th><th>วันที่</th>
       </tr></thead>
       <tbody>
         <% if (!recentLeads.length) { %>
@@ -194,9 +117,7 @@ const convRate  = pct(f.converted,    f.total_leads)
               <div><strong><%= l.brand %> <%= l.model %></strong> ปี <%= l.year %></div>
               <div><span class="adm-type-pill adm-type-<%= l.insurance_type %>"><%= TYPE_MAP[l.insurance_type]||l.insurance_type %></span></div>
             </td>
-            <td class="adm-money">
-              <% if (l.best_price) { %>฿<%= formatNumber(l.best_price) %><% } else { %>-<% } %>
-            </td>
+            <td class="adm-money"><% if (l.best_price) { %>฿<%= formatNumber(l.best_price) %><% } else { %>-<% } %></td>
             <td>
               <% if (l.name) { %><div><%= l.name %></div><% } else { %><span class="adm-sub">ไม่ระบุ</span><% } %>
               <% if (l.phone) { %><div class="adm-sub"><%= l.phone %></div><% } %>
@@ -215,3 +136,282 @@ const convRate  = pct(f.converted,    f.total_leads)
     </table>
   </div>
 </div>
+
+<style>
+.rpt-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem}
+@media(max-width:900px){.rpt-grid-3{grid-template-columns:1fr}}
+.rpt-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:4px}
+.rpt-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b}
+.rpt-legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+;(function(){
+  Chart.defaults.font.family = "'Sarabun','Inter',sans-serif"
+  Chart.defaults.font.size = 11.5
+  Chart.defaults.color = '#94a3b8'
+
+  const PALETTE = ['#3b82f6','#10b981','#8b5cf6','#f59e0b','#ec4899','#14b8a6','#f97316','#6366f1']
+
+  const monthly  = <%- JSON.stringify(monthly) %>
+  const daily    = <%- JSON.stringify(daily) %>
+  const bySource = <%- JSON.stringify(bySource) %>
+  const byType   = <%- JSON.stringify(byType) %>
+  const topBrands= <%- JSON.stringify(topBrands) %>
+  const SOURCE_MAP = <%- JSON.stringify(SOURCE_MAP) %>
+  const TYPE_MAP   = <%- JSON.stringify(TYPE_MAP) %>
+
+  // ── Monthly Line Chart ──────────────────────────────────────
+  ;(function(){
+    const el = document.getElementById('chartMonthly')
+    if (!el || !monthly.length) return
+    const ctx = el.getContext('2d')
+    const gradBlue = ctx.createLinearGradient(0,0,0,220)
+    gradBlue.addColorStop(0,'rgba(59,130,246,.18)')
+    gradBlue.addColorStop(1,'rgba(59,130,246,0)')
+    const gradGreen = ctx.createLinearGradient(0,0,0,220)
+    gradGreen.addColorStop(0,'rgba(16,185,129,.15)')
+    gradGreen.addColorStop(1,'rgba(16,185,129,0)')
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: monthly.map(m => m.month_label),
+        datasets: [
+          {
+            label: 'Leads',
+            data: monthly.map(m => m.leads),
+            borderColor: '#3b82f6',
+            backgroundColor: gradBlue,
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#3b82f6',
+            pointBorderWidth: 2,
+            fill: true,
+            tension: 0.4
+          },
+          {
+            label: 'คลิก',
+            data: monthly.map(m => m.clicks),
+            borderColor: '#10b981',
+            backgroundColor: gradGreen,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#10b981',
+            pointBorderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#f1f5f9',
+            bodyColor: '#cbd5e1',
+            borderColor: '#334155',
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: { maxRotation: 0 }
+          },
+          y: {
+            grid: { color: '#f1f5f9', drawBorder: false },
+            border: { display: false, dash: [4,4] },
+            ticks: { precision: 0, stepSize: 1 },
+            beginAtZero: true
+          }
+        }
+      }
+    })
+  })()
+
+  // ── Donut helper ─────────────────────────────────────────────
+  function makeDoughnut(canvasId, legendId, labels, data, colors) {
+    const el = document.getElementById(canvasId)
+    if (!el) return
+    new Chart(el, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: '#fff',
+          hoverBorderWidth: 0,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#f1f5f9',
+            bodyColor: '#cbd5e1',
+            borderColor: '#334155',
+            borderWidth: 1,
+            cornerRadius: 8,
+            padding: 10,
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.parsed} leads (${Math.round(ctx.parsed/data.reduce((a,b)=>a+b,0)*100)}%)`
+            }
+          }
+        }
+      }
+    })
+    if (legendId) {
+      const wrap = document.getElementById(legendId)
+      if (wrap) wrap.innerHTML = labels.map((l,i) =>
+        `<div class="rpt-legend-item"><span class="rpt-legend-dot" style="background:${colors[i]}"></span>${l} <strong style="color:#334155">${data[i]}</strong></div>`
+      ).join('')
+    }
+  }
+
+  // ── Source Donut ─────────────────────────────────────────────
+  makeDoughnut(
+    'chartSource', 'legendSource',
+    bySource.map(s => SOURCE_MAP[s.source] || s.source || 'อื่นๆ'),
+    bySource.map(s => s.cnt),
+    PALETTE
+  )
+
+  // ── Type Donut ───────────────────────────────────────────────
+  const TYPE_COLOR = { class1:'#3b82f6', class2plus:'#8b5cf6', class3plus:'#10b981', compulsory:'#f59e0b' }
+  makeDoughnut(
+    'chartType', 'legendType',
+    byType.map(t => TYPE_MAP[t.insurance_type] || t.insurance_type),
+    byType.map(t => t.cnt),
+    byType.map(t => TYPE_COLOR[t.insurance_type] || '#94a3b8')
+  )
+
+  // ── 7-Day Bar ────────────────────────────────────────────────
+  ;(function(){
+    const el = document.getElementById('chartDaily')
+    if (!el || !daily.length) return
+    new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: daily.map(d => d.day_label),
+        datasets: [
+          {
+            label: 'Leads',
+            data: daily.map(d => d.leads),
+            backgroundColor: '#3b82f6',
+            borderRadius: 6,
+            borderSkipped: false,
+            maxBarThickness: 32
+          },
+          {
+            label: 'คลิก',
+            data: daily.map(d => d.clicks),
+            backgroundColor: '#10b981',
+            borderRadius: 6,
+            borderSkipped: false,
+            maxBarThickness: 32
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { usePointStyle: true, pointStyle: 'circle', padding: 16 }
+          },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#f1f5f9',
+            bodyColor: '#cbd5e1',
+            cornerRadius: 8,
+            padding: 10
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, border: { display: false } },
+          y: {
+            grid: { color: '#f1f5f9' },
+            border: { display: false },
+            ticks: { precision: 0 },
+            beginAtZero: true
+          }
+        }
+      }
+    })
+  })()
+
+  // ── Top Brands Horizontal Bar ────────────────────────────────
+  ;(function(){
+    const el = document.getElementById('chartBrands')
+    if (!el || !topBrands.length) return
+    const labels = topBrands.map((b,i) => `#${i+1} ${b.brand||'ไม่ระบุ'}`)
+    new Chart(el, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Leads',
+          data: topBrands.map(b => b.cnt),
+          backgroundColor: topBrands.map((_,i) => PALETTE[i % PALETTE.length] + 'cc'),
+          borderColor:      topBrands.map((_,i) => PALETTE[i % PALETTE.length]),
+          borderWidth: 1.5,
+          borderRadius: 5,
+          borderSkipped: false,
+          maxBarThickness: 22
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#f1f5f9',
+            bodyColor: '#cbd5e1',
+            cornerRadius: 8,
+            padding: 10,
+            callbacks: { label: ctx => ` ${ctx.parsed.x} leads` }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#f1f5f9' },
+            border: { display: false },
+            ticks: { precision: 0 }
+          },
+          y: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: { font: { size: 12, weight: '600' }, color: '#475569' }
+          }
+        }
+      }
+    })
+  })()
+
+})()
+</script>

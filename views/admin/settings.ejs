@@ -2,33 +2,65 @@
 <% if (saved) { %><div class="adm-alert adm-alert-success">✅ บันทึกการตั้งค่าเรียบร้อย</div><% } %>
 
 <% if (isAffiliate && locals.affSlug) { %>
-<div class="adm-card" style="margin-bottom:16px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff">
-  <div style="font-size:13px;opacity:.8;margin-bottom:8px">ลิงก์ Affiliate ของคุณ</div>
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-    <code id="affLinkSettings" style="flex:1;background:rgba(255,255,255,.15);padding:8px 12px;border-radius:6px;font-size:13px;word-break:break-all"><%= appUrl %>/?aff=<%= affSlug %></code>
-    <button onclick="copyAffSettings()" id="copyBtnSettings" style="background:rgba(255,255,255,.25);border:none;color:#fff;cursor:pointer;padding:8px 16px;border-radius:6px;font-size:13px;white-space:nowrap">คัดลอกลิงก์</button>
+<style>
+.aff-link-card{background:linear-gradient(135deg,#6d28d9 0%,#4c1d95 100%);border-radius:14px;padding:24px 28px;margin-bottom:20px;color:#fff;box-shadow:0 4px 24px rgba(109,40,217,.35)}
+.aff-link-card__label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;opacity:.65;margin-bottom:14px}
+.aff-link-card__row{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.aff-link-card__url{flex:1;background:rgba(255,255,255,.12);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 14px;font-size:13px;font-family:monospace;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aff-link-card__copy{background:#fff;color:#6d28d9;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.aff-link-card__copy:hover{opacity:.88}
+.aff-link-card__divider{border:none;border-top:1px solid rgba(255,255,255,.15);margin:0 0 18px}
+.aff-link-card__slug-label{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px}
+.aff-link-card__slug-row{display:flex;align-items:center;gap:0;flex-wrap:wrap;gap:8px}
+.aff-link-card__slug-prefix{font-size:12px;opacity:.6;white-space:nowrap;font-family:monospace}
+.aff-link-card__slug-input{background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:8px 12px;font-size:13px;font-family:monospace;width:150px;outline:none;transition:border-color .15s}
+.aff-link-card__slug-input:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.2)}
+.aff-link-card__slug-input::placeholder{opacity:.4}
+.aff-link-card__slug-btn{background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s}
+.aff-link-card__slug-btn:hover{background:rgba(255,255,255,.3)}
+.aff-link-card__slug-hint{font-size:11px;opacity:.45}
+.aff-link-card__error{background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.4);border-radius:7px;padding:7px 12px;font-size:12px;margin-bottom:12px}
+</style>
+
+<div class="aff-link-card">
+  <div class="aff-link-card__label">🔗 ลิงก์ Affiliate ของคุณ</div>
+
+  <div class="aff-link-card__row">
+    <div class="aff-link-card__url" id="affLinkSettings" title="<%= appUrl %>/?aff=<%= affSlug %>"><%= appUrl %>/?aff=<%= affSlug %></div>
+    <button type="button" class="aff-link-card__copy" id="copyBtnSettings" onclick="copyAffSettings()">คัดลอก</button>
   </div>
+
+  <hr class="aff-link-card__divider">
+
+  <div class="aff-link-card__slug-label">เปลี่ยน Slug</div>
   <% if (locals.slugError === 'taken') { %>
-    <div style="background:rgba(239,68,68,.3);padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px">❌ Slug นี้ถูกใช้ไปแล้ว กรุณาเลือกใหม่</div>
+    <div class="aff-link-card__error">❌ Slug นี้ถูกใช้ไปแล้ว กรุณาเลือกใหม่</div>
   <% } else if (locals.slugError === 'invalid') { %>
-    <div style="background:rgba(239,68,68,.3);padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px">❌ Slug ต้องเป็นตัวอักษร a-z, 0-9, - หรือ _ เท่านั้น</div>
+    <div class="aff-link-card__error">❌ ใช้ได้เฉพาะ a–z, 0–9, เครื่องหมาย - และ _ เท่านั้น</div>
   <% } %>
-  <form action="/admin/settings/slug" method="POST" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <form action="/admin/settings/slug" method="POST">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <span style="font-size:12px;opacity:.8;white-space:nowrap"><%= appUrl %>/?aff=</span>
-    <input type="text" name="new_slug" value="<%= affSlug %>" pattern="[a-zA-Z0-9_-]+" required
-      style="background:rgba(255,255,255,.9);border:none;color:#1e1b4b;padding:6px 10px;border-radius:6px;font-size:13px;font-family:monospace;width:140px">
-    <button type="submit" style="background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);color:#fff;cursor:pointer;padding:6px 14px;border-radius:6px;font-size:12px">เปลี่ยน Slug</button>
-    <span style="font-size:11px;opacity:.6">a-z, 0-9, -, _ เท่านั้น</span>
+    <div class="aff-link-card__slug-row">
+      <span class="aff-link-card__slug-prefix"><%= appUrl %>/?aff=</span>
+      <input class="aff-link-card__slug-input" type="text" name="new_slug"
+             value="<%= affSlug %>" placeholder="your-slug"
+             pattern="[a-zA-Z0-9_-]+" required maxlength="50">
+      <button type="submit" class="aff-link-card__slug-btn">บันทึก</button>
+      <span class="aff-link-card__slug-hint">a–z · 0–9 · - · _</span>
+    </div>
   </form>
 </div>
+
 <script>
 function copyAffSettings() {
-  const url = document.getElementById('affLinkSettings').textContent.trim()
+  const url = '<%= appUrl %>/?aff=<%= affSlug %>'
   navigator.clipboard.writeText(url).then(() => {
     const btn = document.getElementById('copyBtnSettings')
+    const orig = btn.textContent
     btn.textContent = '✓ คัดลอกแล้ว'
-    setTimeout(() => { btn.textContent = 'คัดลอกลิงก์' }, 2000)
+    btn.style.background = '#059669'
+    btn.style.color = '#fff'
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.style.color = '' }, 2000)
   })
 }
 </script>

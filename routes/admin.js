@@ -314,8 +314,25 @@ module.exports = async function adminPlugin(fastify, opts) {
       title: isAffiliate ? 'ตั้งค่าของฉัน' : 'ตั้งค่าระบบ',
       activePage: 'settings', admin,
       settings, saved: req.query.saved === '1',
-      affSlug, appUrl
+      affSlug, appUrl, slugError: req.query.slug_error || null
     })
+  })
+
+  fastify.post('/settings/slug', async (req, reply) => {
+    const admin = req.session.admin
+    if (admin.role !== 'affiliate' || !admin.affiliate_id) return reply.redirect('/admin')
+
+    const { new_slug } = req.body || {}
+    const cleaned = (new_slug || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+    if (!cleaned) return reply.redirect('/admin/settings?slug_error=invalid')
+
+    const [exist] = await db.query('SELECT id FROM affiliates WHERE slug=? AND id!=?', [cleaned, admin.affiliate_id])
+    if (exist.length) return reply.redirect('/admin/settings?slug_error=taken')
+
+    await db.query('UPDATE affiliates SET slug=? WHERE id=?', [cleaned, admin.affiliate_id])
+    // อัป cookie ที่ browser ด้วย
+    reply.setCookie('aff_slug', cleaned, { path: '/', maxAge: 30 * 24 * 60 * 60, httpOnly: true, sameSite: 'lax' })
+    return reply.redirect('/admin/settings?saved=1')
   })
 
   fastify.post('/settings', async (req, reply) => {

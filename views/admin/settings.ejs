@@ -4,10 +4,23 @@
 <% if (isAffiliate && locals.affSlug) { %>
 <div class="adm-card" style="margin-bottom:16px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff">
   <div style="font-size:13px;opacity:.8;margin-bottom:8px">ลิงก์ Affiliate ของคุณ</div>
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
     <code id="affLinkSettings" style="flex:1;background:rgba(255,255,255,.15);padding:8px 12px;border-radius:6px;font-size:13px;word-break:break-all"><%= appUrl %>/?aff=<%= affSlug %></code>
     <button onclick="copyAffSettings()" id="copyBtnSettings" style="background:rgba(255,255,255,.25);border:none;color:#fff;cursor:pointer;padding:8px 16px;border-radius:6px;font-size:13px;white-space:nowrap">คัดลอกลิงก์</button>
   </div>
+  <% if (locals.slugError === 'taken') { %>
+    <div style="background:rgba(239,68,68,.3);padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px">❌ Slug นี้ถูกใช้ไปแล้ว กรุณาเลือกใหม่</div>
+  <% } else if (locals.slugError === 'invalid') { %>
+    <div style="background:rgba(239,68,68,.3);padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px">❌ Slug ต้องเป็นตัวอักษร a-z, 0-9, - หรือ _ เท่านั้น</div>
+  <% } %>
+  <form action="/admin/settings/slug" method="POST" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <span style="font-size:12px;opacity:.8;white-space:nowrap"><%= appUrl %>/?aff=</span>
+    <input type="text" name="new_slug" value="<%= affSlug %>" pattern="[a-zA-Z0-9_-]+" required
+      style="background:rgba(255,255,255,.9);border:none;color:#1e1b4b;padding:6px 10px;border-radius:6px;font-size:13px;font-family:monospace;width:140px">
+    <button type="submit" style="background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);color:#fff;cursor:pointer;padding:6px 14px;border-radius:6px;font-size:12px">เปลี่ยน Slug</button>
+    <span style="font-size:11px;opacity:.6">a-z, 0-9, -, _ เท่านั้น</span>
+  </form>
 </div>
 <script>
 function copyAffSettings() {

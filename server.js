@@ -91,6 +91,22 @@ function formatNumber(n) {
   return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0 })
 }
 
+const COMPANY_ABBR = {
+  'ทิพย':                              'TIP',
+  'วิริยะ':                            'VIB',
+  'กรุงเทพ':                           'BKI',
+  'เมืองไทยประกันภัย':                 'MTI',
+  'ไทยวิวัฒน์':                        'TVI',
+  'เทเวศ':                             'DVI',
+  'คุ้มภัยโตเกียวมารีนประกันภัย':      'TKI',
+  'อลิอันซ์':                          'AZAY',
+  'ERGO':                              'ERGO',
+  'LMG':                               'LMG',
+}
+function getCompanyAbbr(name) {
+  return COMPANY_ABBR[name] || name.slice(0, 3).toUpperCase()
+}
+
 function genCsrf(req) {
   if (!req.session.csrfToken) {
     req.session.csrfToken = crypto.randomBytes(24).toString('hex')
@@ -129,11 +145,13 @@ fastify.get('/', async (req, reply) => {
     req.session.queryParams = req.query
   }
 
-  // affiliate cookie — ผูก ?aff=SLUG ไว้ 30 วัน
+  // affiliate cookie + click counter
   if (req.query.aff) {
-    reply.setCookie('aff_slug', req.query.aff.substring(0, 50), {
+    const affSlug = req.query.aff.substring(0, 50)
+    reply.setCookie('aff_slug', affSlug, {
       path: '/', maxAge: 30 * 24 * 60 * 60, httpOnly: true, sameSite: 'lax'
     })
+    db.query('UPDATE affiliates SET click_count = click_count + 1 WHERE slug = ? AND is_active = 1', [affSlug]).catch(() => {})
   }
 
   // visitor_id cookie — track returning visitors
@@ -146,6 +164,9 @@ fastify.get('/', async (req, reply) => {
   }
 
   const [brands] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
+  const [insurers] = await db.query(
+    'SELECT id, name, short_name, logo_url FROM companies WHERE is_active = 1 ORDER BY name'
+  ).catch(() => [[]])
   const currentYear = new Date().getFullYear()
   const years = []
   for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
@@ -156,7 +177,7 @@ fastify.get('/', async (req, reply) => {
 
   return reply.view('index.ejs', {
     title: 'คำนวณเบี้ยประกันรถยนต์',
-    brands, years, errors: {}, old: {},
+    brands, insurers, years, errors: {}, old: {},
     utm: req.session.utm || {}, csrfToken,
     lineOaUrl: pub.line_oa_url || null,
     gtmHeadCode: pub.gtm_head_code || '',
@@ -269,12 +290,15 @@ fastify.post('/quote', {
 
   if (Object.keys(errors).length > 0) {
     const [brands] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
+    const [insurers] = await db.query(
+      'SELECT id, name, short_name, logo_url FROM companies WHERE is_active = 1 ORDER BY name'
+    ).catch(() => [[]])
     const years = []
     for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
     const csrfToken = genCsrf(req)
     return reply.view('index.ejs', {
       title: 'คำนวณเบี้ยประกันรถยนต์',
-      brands, years, errors, old: body,
+      brands, insurers, years, errors, old: body,
       utm: req.session.utm || {}, csrfToken
     }, { layout: PUB_LAYOUT })
   }
@@ -381,12 +405,14 @@ fastify.post('/quote', {
     )
   }
 
-  // Notification badge + LINE notify
+  // Notification badge + LINE notify (ใช้ line_admin_user_id จาก settings per-affiliate)
   const [[newLead]] = await db.query('SELECT id FROM leads WHERE token = ?', [resultToken])
   db.query("INSERT INTO notifications (type, ref_id) VALUES ('new_lead', ?)", [newLead?.id || 0]).catch(() => {})
-  notifyAdminNewLead({
-    brand: brandName, model: modelName, year: yearInt,
-    insurance_type, name: cleanName, phone: cleanPhone, source
+  getPublicSettings(affiliateId || 0).then(pub => {
+    notifyAdminNewLead({
+      brand: brandName, model: modelName, year: yearInt,
+      insurance_type, name: cleanName, phone: cleanPhone, source
+    }, pub.line_admin_user_id || null).catch(() => {})
   }).catch(() => {})
 
   return reply.redirect(`/result/${resultToken}`)
@@ -409,12 +435,19 @@ fastify.get('/result/:token', async (req, reply) => {
   if (lead.model_id && lead.year && lead.insurance_type) {
     const scraperClass = CLASS_MAP[lead.insurance_type]
     const [pkgRows] = await db.query(
-      `SELECT company_name, insurance_class, premium_amount, premium_discounted, coverage
+      `SELECT id, company_name, insurance_class, premium_amount, premium_discounted, coverage,
+              repair_type, has_flood
        FROM scraped_packages
        WHERE model_id = ? AND car_year = ? AND insurance_class = ?
        ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
       [lead.model_id, lead.year, scraperClass]
-    ).catch(() => [[]])
+    ).catch(() => db.query(
+      `SELECT id, company_name, insurance_class, premium_amount, premium_discounted, coverage
+       FROM scraped_packages
+       WHERE model_id = ? AND car_year = ? AND insurance_class = ?
+       ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
+      [lead.model_id, lead.year, scraperClass]
+    ).catch(() => [[]]))
     packages = pkgRows.map(pkg => ({
       ...pkg,
       coverage: typeof pkg.coverage === 'string' ? JSON.parse(pkg.coverage) : pkg.coverage
@@ -431,7 +464,7 @@ fastify.get('/result/:token', async (req, reply) => {
 
   return reply.view('result.ejs', {
     title: 'ราคาประกันรถยนต์ของคุณ',
-    lead, insuranceConfig, packages, formatNumber,
+    lead, insuranceConfig, packages, formatNumber, getCompanyAbbr,
     lineOaUrl:   pub.line_oa_url   || '#',
     facebookUrl: pub.facebook_url  || '#',
     sitePhone:   pub.site_phone    || null,
@@ -508,9 +541,11 @@ fastify.post('/concierge', {
 
   const [[newLead]] = await db.query('SELECT id FROM leads WHERE token = ?', [token]).catch(() => [[null]])
   db.query("INSERT INTO notifications (type, ref_id) VALUES ('new_lead', ?)", [newLead?.id || 0]).catch(() => {})
-  notifyAdminNewLead({
-    brand: 'Concierge', model: '—', year: new Date().getFullYear(),
-    insurance_type: 'class1', name: cleanName, phone: ph, source: utm.source || 'organic'
+  getPublicSettings(affiliateId || 0).then(pub => {
+    notifyAdminNewLead({
+      brand: 'Concierge', model: '—', year: new Date().getFullYear(),
+      insurance_type: 'class1', name: cleanName, phone: ph, source: utm.source || 'organic'
+    }, pub.line_admin_user_id || null).catch(() => {})
   }).catch(() => {})
 
   return reply.send({ ok: true })
@@ -557,12 +592,19 @@ fastify.get('/compare', async (req, reply) => {
         // Mode B: same-class, multi-company
         const scraperClass = CLASS_LABEL_MAP[insurance_class]
         const [pkgRows] = await db.query(
-          `SELECT company_name, insurance_class, premium_amount, premium_discounted, coverage
+          `SELECT id, company_name, insurance_class, premium_amount, premium_discounted, coverage,
+                  repair_type, has_flood
            FROM scraped_packages
            WHERE model_id = ? AND car_year = ? AND insurance_class = ?
            ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
           [modelIdInt, yearInt, scraperClass]
-        )
+        ).catch(() => db.query(
+          `SELECT id, company_name, insurance_class, premium_amount, premium_discounted, coverage
+           FROM scraped_packages
+           WHERE model_id = ? AND car_year = ? AND insurance_class = ?
+           ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
+          [modelIdInt, yearInt, scraperClass]
+        ).catch(() => [[]]))
         sameClassPackages = pkgRows.map(pkg => ({
           ...pkg,
           coverage: typeof pkg.coverage === 'string' ? JSON.parse(pkg.coverage) : (pkg.coverage || null)
@@ -592,7 +634,75 @@ fastify.get('/compare', async (req, reply) => {
     brands, models, provinces, years,
     comparisons, sameClassPackages, selectedModel,
     selected: { brand_id, model_id, year, province, insurance_class },
-    formatNumber, INSURANCE_TYPES, csrfToken
+    formatNumber, getCompanyAbbr, INSURANCE_TYPES, csrfToken
+  }, { layout: PUB_LAYOUT })
+})
+
+// =============================================
+// GET /compare-view — เปรียบเทียบแผนแบบเคียงข้างกัน (dedicated page)
+// =============================================
+fastify.get('/compare-view', async (req, reply) => {
+  const { pkg_ids, token } = req.query
+  if (!pkg_ids) return reply.redirect('/')
+
+  const ids = pkg_ids.split(',').map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n > 0).slice(0, 3)
+  if (ids.length < 2) return reply.redirect('/')
+
+  const [pkgRows] = await db.query(
+    `SELECT id, company_name, insurance_class, premium_amount, premium_discounted, coverage,
+            repair_type, has_flood, model_id, car_year
+     FROM scraped_packages
+     WHERE id IN (?)
+     ORDER BY FIELD(id, ${ids.join(',')})`,
+    [ids]
+  ).catch(() => db.query(
+    `SELECT id, company_name, insurance_class, premium_amount, premium_discounted, coverage,
+            model_id, car_year
+     FROM scraped_packages
+     WHERE id IN (?)
+     ORDER BY FIELD(id, ${ids.join(',')})`,
+    [ids]
+  ).catch(() => [[]]))
+
+  if (pkgRows.length < 2) return reply.redirect('/')
+
+  const packages = pkgRows.map(pkg => ({
+    ...pkg,
+    coverage: typeof pkg.coverage === 'string' ? JSON.parse(pkg.coverage) : (pkg.coverage || {})
+  }))
+
+  let carInfo = null
+  const firstPkg = packages[0]
+  if (firstPkg?.model_id) {
+    const [[modelRow]] = await db.query(
+      `SELECT sm.id AS model_id, sm.name AS model_name, sb.id AS brand_id, sb.name AS brand_name
+       FROM scraped_models sm JOIN scraped_brands sb ON sb.id = sm.brand_id
+       WHERE sm.id = ?`,
+      [firstPkg.model_id]
+    ).catch(() => [[null]])
+    if (modelRow) carInfo = { ...modelRow, year: firstPkg.car_year, insurance_class: firstPkg.insurance_class }
+  }
+
+  const [brands] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name').catch(() => [[]])
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: 21 }, (_, i) => currentYear - i)
+
+  const pub = await getPublicSettings(0)
+
+  return reply.view('compare-view.ejs', {
+    title: 'เปรียบเทียบแผนประกัน',
+    packages,
+    carInfo,
+    brands,
+    years,
+    INSURANCE_TYPES,
+    leadToken: /^[0-9a-f]{32}$/.test(token || '') ? token : null,
+    formatNumber, getCompanyAbbr,
+    lineOaUrl:   pub.line_oa_url   || '#',
+    facebookUrl: pub.facebook_url  || '#',
+    sitePhone:   pub.site_phone    || null,
+    gtmHeadCode: pub.gtm_head_code || '',
+    gtmBodyCode: pub.gtm_body_code || ''
   }, { layout: PUB_LAYOUT })
 })
 

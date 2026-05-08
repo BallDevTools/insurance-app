@@ -217,7 +217,8 @@ module.exports = async function adminPlugin(fastify, opts) {
     const page   = Math.max(1, parseInt(req.query.page) || 1)
     const limit  = 20
     const offset = (page - 1) * limit
-    const { q = '', status = '', source = '', funnel_stage = '', aff_filter = '', aff_id = '' } = req.query
+    const { q = '', status = '', source = '', funnel_stage = '', aff_id = '', view: viewParam = 'all' } = req.query
+    const tabView = ['all','direct','affiliate'].includes(viewParam) ? viewParam : 'all'
 
     const { extra, p: fp } = leadFilter(req.session.admin)
     let where = `WHERE 1=1 ${extra}`; const p = [...fp]
@@ -225,8 +226,8 @@ module.exports = async function adminPlugin(fastify, opts) {
     if (status)       { where += ' AND l.status=?'; p.push(status) }
     if (source)       { where += ' AND l.source=?'; p.push(source) }
     if (funnel_stage) { where += ' AND l.funnel_stage=?'; p.push(funnel_stage) }
-    if (aff_filter === 'direct')    { where += ' AND l.affiliate_id IS NULL' }
-    if (aff_filter === 'affiliate') { where += ' AND l.affiliate_id IS NOT NULL' }
+    if (tabView === 'direct')    { where += ' AND l.affiliate_id IS NULL' }
+    if (tabView === 'affiliate') { where += ' AND l.affiliate_id IS NOT NULL' }
     if (aff_id)       { where += ' AND l.affiliate_id=?'; p.push(parseInt(aff_id)) }
 
     const [[{ total }]] = await db.query(
@@ -249,7 +250,8 @@ module.exports = async function adminPlugin(fastify, opts) {
     return av(reply, 'leads.ejs', {
       title: 'Leads ลูกค้า', activePage: 'leads', admin: req.session.admin,
       leads, total, page, totalPages: Math.ceil(total / limit),
-      filters: { q, status, source, funnel_stage, aff_filter, aff_id }
+      tabView,
+      filters: { q, status, source, funnel_stage, aff_id }
     })
   })
 
@@ -437,7 +439,7 @@ module.exports = async function adminPlugin(fastify, opts) {
     let affBreakdown = []
     if (view === 'affiliate') {
       ;[affBreakdown] = await db.query(`
-        SELECT a.id, a.slug, a.name, a.commission_rate,
+        SELECT a.id, a.slug, a.name, a.commission_rate, a.click_count,
                COUNT(l.id) AS total_leads,
                SUM(CASE WHEN l.status='converted' THEN 1 ELSE 0 END) AS converted,
                SUM(CASE WHEN l.clicked_line=1 OR l.clicked_facebook=1 THEN 1 ELSE 0 END) AS clicks,

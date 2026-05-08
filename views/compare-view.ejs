@@ -1,0 +1,191 @@
+<%
+  var HEAD_CLASS = ['cmp-card__head--a', 'cmp-card__head--b', 'cmp-card__head--c']
+  function numFmt(n) { return Number(String(n).replace(/,/g,'')).toLocaleString('th-TH') }
+  function fmtVal(v) {
+    var n = parseFloat(String(v).replace(/,/g,''))
+    return (!isNaN(n) && n > 0) ? '฿' + n.toLocaleString('th-TH') : String(v)
+  }
+  function pkgPrice(p) {
+    var d = parseFloat(p.premium_discounted), a = parseFloat(p.premium_amount)
+    return (d && d < a) ? d : a
+  }
+  function lineHref() {
+    return locals.leadToken ? '/click/line?token=' + locals.leadToken : (locals.lineOaUrl || '#')
+  }
+%>
+
+<!-- HERO -->
+<section class="cmpv-hero">
+  <div class="container">
+    <nav class="cmpv-crumbs">
+      <a href="/">หน้าแรก</a><span>›</span>
+      <% if (locals.leadToken) { %><a href="/result/<%= locals.leadToken %>">ผลการค้นหา</a><% } else { %><a href="/compare">เปรียบเทียบ</a><% } %>
+      <span>›</span><span>เปรียบเทียบ</span>
+    </nav>
+    <h1 class="cmpv-hero__title">
+      เปรียบเทียบประกันรถยนต์ <em><%= packages.length %> บริษัทชั้นนำ</em>
+    </h1>
+
+    <!-- Filter bar -->
+    <form class="cmpv-filter-bar" action="/compare" method="GET" id="cmpvFilterForm">
+      <div class="cmpv-filter-bar__field">
+        <select name="brand_id" id="cmpvBrand">
+          <option value="">ยี่ห้อรถ</option>
+          <% (locals.brands || []).forEach(function(b) { %>
+          <option value="<%= b.id %>" <%= (locals.carInfo && locals.carInfo.brand_id == b.id) ? 'selected' : '' %>><%= b.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="cmpv-filter-bar__field">
+        <select name="model_id" id="cmpvModel" data-default-model-id="<%= locals.carInfo ? locals.carInfo.model_id : '' %>">
+          <option value="">รุ่นรถ</option>
+        </select>
+      </div>
+      <div class="cmpv-filter-bar__field">
+        <select name="year">
+          <option value="">ปีรถ</option>
+          <% (locals.years || []).forEach(function(y) { %>
+          <option value="<%= y %>" <%= (locals.carInfo && locals.carInfo.year == y) ? 'selected' : '' %>><%= y %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="cmpv-filter-bar__field cmpv-filter-bar__field--wide">
+        <select name="insurance_class">
+          <option value="">ชั้นประกัน</option>
+          <% Object.entries(locals.INSURANCE_TYPES || {}).forEach(function(entry) { var k=entry[0], v=entry[1] %>
+          <option value="<%= k %>" <%= (locals.carInfo && locals.carInfo.insurance_class === k) ? 'selected' : '' %>><%= v.label %></option>
+          <% }) %>
+        </select>
+      </div>
+      <button class="cmpv-filter-bar__btn" type="submit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        ค้นหา
+      </button>
+    </form>
+  </div>
+</section>
+
+<!-- CARDS -->
+<section class="cmpv-body">
+  <div class="container">
+    <div class="cmpv-grid" data-n="<%= packages.length %>">
+
+      <% packages.forEach(function(pkg, rank) {
+        var price    = pkgPrice(pkg)
+        var repairTh = pkg.repair_type === 'authorized' ? 'ซ่อมศูนย์'
+                     : pkg.repair_type === 'garage'     ? 'ซ่อมอู่' : null
+        var clsLabel = 'ชั้น ' + pkg.insurance_class + (repairTh ? ' • ' + repairTh : '')
+        var logo     = getCompanyAbbr(pkg.company_name)
+        var cov      = pkg.coverage || {}
+        var ownE     = Object.entries(cov.own_vehicle  || {})
+        var thirdE   = Object.entries(cov.third_party  || {})
+        var extraE   = Object.entries(cov.extra        || {})
+        var mainE    = ownE.concat(thirdE)
+      %>
+
+      <article class="cmp-card<%= rank === 0 ? ' is-best' : '' %>">
+
+        <!-- Header -->
+        <div class="cmp-card__head <%= HEAD_CLASS[rank] || HEAD_CLASS[2] %>">
+          <div class="cmp-card__logo"><%= logo %></div>
+          <div class="cmp-card__brand"><%= pkg.company_name %></div>
+          <span class="cmp-card__class"><%= clsLabel.toUpperCase() %></span>
+          <div class="cmp-card__price">฿<%= numFmt(price) %><em>/ปี</em></div>
+        </div>
+
+        <!-- Body -->
+        <div class="cmp-card__body">
+
+          <% if (mainE.length) { %>
+          <div class="cmp-section">
+            <h4>ความคุ้มครองหลัก</h4>
+            <ul>
+              <% mainE.forEach(function(e) { %>
+              <li>
+                <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                <%= e[0] %> <b><%= fmtVal(e[1]) %></b>
+              </li>
+              <% }) %>
+            </ul>
+          </div>
+          <% } %>
+
+          <% if (extraE.length) { %>
+          <div class="cmp-section">
+            <h4>ความคุ้มครองพิเศษ</h4>
+            <ul>
+              <% extraE.forEach(function(e) { %>
+              <li>
+                <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                <%= e[0] %>
+              </li>
+              <% }) %>
+            </ul>
+          </div>
+          <% } %>
+
+          <% if (pkg.repair_type || pkg.has_flood) { %>
+          <div class="cmp-section">
+            <h4>การซ่อม & บริการ</h4>
+            <ul>
+              <% if (repairTh) { %>
+              <li>
+                <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                <%= repairTh %>
+              </li>
+              <% } %>
+              <% if (pkg.has_flood) { %>
+              <li>
+                <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                น้ำท่วม / ภัยธรรมชาติ
+              </li>
+              <% } %>
+            </ul>
+          </div>
+          <% } %>
+
+        </div><!-- /.cmp-card__body -->
+
+        <!-- CTA -->
+        <div class="cmp-card__cta">
+          <a class="btn-pick" href="<%= lineHref() %>" target="_blank" rel="noopener">
+            เลือกแผนนี้
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <a class="btn-line-mini" href="<%= lineHref() %>" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63h-1.755v1.125h1.755c.349 0 .63.283.63.63s-.281.628-.63.628h-2.385a.631.631 0 0 1-.627-.629V8.108c0-.345.281-.63.63-.63h2.385c.346 0 .627.285.627.63 0 .349-.281.63-.63.63h-1.755v1.125h1.755zm-3.855 3.016a.63.63 0 0 1-.629.629.62.62 0 0 1-.51-.252l-2.443-3.317v2.94a.63.63 0 1 1-1.257 0V8.108c0-.27.174-.51.432-.596.064-.021.133-.031.199-.031.196 0 .378.103.49.256l2.456 3.331V8.108a.63.63 0 1 1 1.262 0v4.771zm-5.741 0a.63.63 0 1 1-1.257 0V8.108a.629.629 0 1 1 1.257 0v4.771zm-2.466.629H4.917a.628.628 0 0 1-.626-.629V8.108a.63.63 0 1 1 1.255 0v4.141h1.757c.349 0 .629.283.629.63 0 .346-.282.629-.629.629zM24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.121.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+            สอบถามผ่าน LINE
+          </a>
+        </div>
+
+      </article>
+      <% }) %>
+
+    </div>
+  </div>
+</section>
+
+<script>
+(function() {
+  var brandSel = document.getElementById('cmpvBrand')
+  var modelSel = document.getElementById('cmpvModel')
+  if (!brandSel) return
+  function loadModels(brandId, defaultId) {
+    if (!brandId) { modelSel.innerHTML = '<option value="">รุ่นรถ</option>'; return }
+    modelSel.innerHTML = '<option value="">กำลังโหลด...</option>'
+    fetch('/api/models?brand_id=' + brandId)
+      .then(function(r) { return r.json() })
+      .then(function(list) {
+        modelSel.innerHTML = '<option value="">รุ่นรถ</option>'
+        list.forEach(function(m) {
+          var o = document.createElement('option')
+          o.value = m.id; o.textContent = m.name
+          if (String(m.id) === String(defaultId)) o.selected = true
+          modelSel.appendChild(o)
+        })
+      })
+  }
+  brandSel.addEventListener('change', function() { loadModels(this.value, null) })
+  if (brandSel.value) loadModels(brandSel.value, modelSel.dataset.defaultModelId)
+})()
+</script>

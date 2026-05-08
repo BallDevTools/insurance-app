@@ -130,6 +130,7 @@ const convRate  = pct(f.converted,    f.total_leads)
       <thead><tr>
         <th>Affiliate</th>
         <th>Rate</th>
+        <th style="text-align:right">Link Clicks</th>
         <th style="text-align:right">Leads</th>
         <th style="text-align:right">Converted</th>
         <th style="text-align:right">Click Rate</th>
@@ -147,6 +148,7 @@ const convRate  = pct(f.converted,    f.total_leads)
             <div style="font-size:11px;color:#94a3b8;font-family:monospace">?aff=<%= a.slug %></div>
           </td>
           <td><span style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:600"><%= parseFloat(a.commission_rate).toFixed(1) %>%</span></td>
+          <td style="text-align:right;color:#6366f1;font-weight:600"><%= a.click_count || 0 %></td>
           <td style="text-align:right;font-weight:600"><%= a.total_leads || 0 %></td>
           <td style="text-align:right"><%= a.converted || 0 %></td>
           <td style="text-align:right">
@@ -167,6 +169,7 @@ const convRate  = pct(f.converted,    f.total_leads)
       <tfoot>
         <tr style="background:#f8fafc;font-weight:700">
           <td colspan="2" style="color:#64748b;font-size:12px">รวมทั้งหมด</td>
+          <td style="text-align:right;color:#6366f1;font-weight:700"><%= affBreakdown.reduce((s,a)=>s+(parseInt(a.click_count)||0),0) %></td>
           <td style="text-align:right"><%= affBreakdown.reduce((s,a)=>s+(parseInt(a.total_leads)||0),0) %></td>
           <td style="text-align:right"><%= affBreakdown.reduce((s,a)=>s+(parseInt(a.converted)||0),0) %></td>
           <td colspan="2"></td>

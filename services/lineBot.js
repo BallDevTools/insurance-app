@@ -346,10 +346,11 @@ function welcomeBubble() {
 }
 
 // แจ้งเตือนเจ้าหน้าที่เมื่อมี lead ใหม่
-async function notifyAdminNewLead(lead) {
-  const adminId = process.env.LINE_ADMIN_USER_ID
-  if (!adminId) return
-  return pushMessage(adminId, [newLeadBubble(lead)]).catch(() => {})
+// adminUserId มาจาก app_settings(line_admin_user_id) per-affiliate, fallback ไป env var
+async function notifyAdminNewLead(lead, adminUserId) {
+  const id = adminUserId || process.env.LINE_ADMIN_USER_ID
+  if (!id) return
+  return pushMessage(id, [newLeadBubble(lead)]).catch(() => {})
 }
 
 module.exports = { validateSignature, replyMessage, pushMessage, getUserProfile, textMsg, quoteBubble, newLeadBubble, welcomeBubble, notifyAdminNewLead }

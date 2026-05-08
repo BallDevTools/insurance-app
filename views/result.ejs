@@ -1,163 +1,233 @@
-<!-- RESULT HEADER -->
-<section class="front-page-head">
+<!-- SUMMARY BAR -->
+<section class="summary-bar">
   <div class="container">
-    <div class="front-page-head-row">
-      <a href="/" class="front-back-link">← กลับไปเช็คราคาใหม่</a>
+    <div class="summary-bar__crumbs">
+      <a href="/">หน้าแรก</a>
+      <span>›</span>
+      <span>ผลการค้นหา</span>
     </div>
-    <h1>เรามีแผนประกันที่เหมาะกับคุณ</h1>
-
-    <!-- Gradient Summary Card -->
-    <div class="pub-result-summary">
-      <div class="pub-result-summary-item">
-        <div class="pub-result-summary-icon">🚗</div>
-        <div>
-          <div class="pub-result-summary-sub">รถของคุณ</div>
-          <div class="pub-result-summary-val"><%= lead.brand %> <%= lead.model %></div>
+    <div class="summary-bar__inner">
+      <div class="summary-bar__icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h2v-3.34a4 4 0 0 0-1.17-2.83L17 7H7L4.17 9.83A4 4 0 0 0 3 12.66V16h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+      </div>
+      <div>
+        <h1><%= lead.brand %> <%= lead.model %> ปี <%= lead.year %> · <%= insuranceConfig.label %></h1>
+        <div class="summary-bar__meta">
+          <% if (lead.best_price) { %>
+          <span class="result-tag">
+            <span class="ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+            เบี้ยเริ่ม ฿<%= formatNumber(lead.best_price) %>/ปี
+          </span>
+          <% } %>
+          <span class="result-tag">
+            <span class="ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3z"/></svg></span>
+            <%= packages.length %> แผนพร้อมเสนอ
+          </span>
         </div>
       </div>
-      <div class="pub-result-summary-item">
-        <div class="pub-result-summary-icon">📅</div>
-        <div>
-          <div class="pub-result-summary-sub">ปีรถ</div>
-          <div class="pub-result-summary-val"><%= lead.year %></div>
-        </div>
-      </div>
-      <div class="pub-result-summary-item">
-        <div class="pub-result-summary-icon">🛡️</div>
-        <div>
-          <div class="pub-result-summary-sub">ประกันที่เลือก</div>
-          <div class="pub-result-summary-val"><%= insuranceConfig.label %></div>
-        </div>
-      </div>
+      <a href="/" class="summary-bar__edit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
+        แก้ไขข้อมูล
+      </a>
     </div>
-    <% if (lead.model_id) { %>
-    <div style="text-align:center;margin-top:1rem">
-      <a href="/compare?model_id=<%= lead.model_id %>&year=<%= lead.year %>" class="front-back-link">⚖️ เปรียบเทียบราคาทุกชั้นประกัน</a>
-    </div>
-    <% } %>
   </div>
 </section>
 
-<!-- RESULT GRID -->
-<section class="front-result-shell">
+<!-- RESULT BODY -->
+<section class="result-body">
   <div class="container">
-    <div class="front-result-grid-v2">
+    <div class="result-layout">
 
-      <!-- Main: Package List -->
-      <div class="front-result-main-v2">
-        <div class="front-section-head front-section-head-left">
-          <h2>แผนประกันที่น่าสนใจสำหรับรถของคุณ</h2>
-        </div>
-
+      <!-- Main column -->
+      <div>
         <% if (packages.length > 0) { %>
-          <div class="front-package-list-v2">
-            <% packages.forEach(function(pkg, i) { %>
-              <%
-                var displayPrice = pkg.premium_discounted && parseFloat(pkg.premium_discounted) < parseFloat(pkg.premium_amount)
-                  ? pkg.premium_discounted : pkg.premium_amount
-                var hasCoverage = pkg.coverage && (pkg.coverage.own_vehicle || pkg.coverage.third_party || pkg.coverage.extra)
-                var pkgId = 'pkg-' + i
-              %>
-              <article class="front-package-card-v2 <%= i === 0 ? 'featured' : '' %>">
-                <div class="front-package-top-v2">
-                  <div>
-                    <span class="front-plan-badge"><%= i === 0 ? 'แนะนำ' : 'ตัวเลือกเพิ่มเติม' %></span>
-                    <h3><%= pkg.company_name %></h3>
-                    <p><%= insuranceConfig.label %></p>
-                  </div>
-                  <div class="front-package-price-v2">
-                    <% if (pkg.premium_discounted && parseFloat(pkg.premium_discounted) < parseFloat(pkg.premium_amount)) { %>
-                      <small><%= formatNumber(pkg.premium_amount) %> บาท</small>
-                    <% } %>
-                    <strong><%= formatNumber(displayPrice) %></strong>
-                    <span>บาท/ปี</span>
-                  </div>
-                </div>
 
-                <% if (hasCoverage) { %>
-                  <button class="btn-expand" onclick="toggleCoverage('<%= pkgId %>', this)" type="button">ดูความคุ้มครอง</button>
-                  <div id="<%= pkgId %>" class="pkg-coverage-detail" style="display:none">
-                    <% var cov = pkg.coverage %>
-                    <% if (cov.own_vehicle && Object.keys(cov.own_vehicle).length > 0) { %>
-                      <div class="cov-section-title">ความรับผิดต่อรถของคุณ</div>
-                      <table class="cov-table">
-                        <% Object.entries(cov.own_vehicle).forEach(function([k,v]) { %>
-                          <tr><td class="cov-key"><%= k %></td><td class="cov-val"><%= v %></td></tr>
-                        <% }) %>
-                      </table>
-                    <% } %>
-                    <% if (cov.third_party && Object.keys(cov.third_party).length > 0) { %>
-                      <div class="cov-section-title">ความรับผิดต่อบุคคลภายนอก</div>
-                      <table class="cov-table">
-                        <% Object.entries(cov.third_party).forEach(function([k,v]) { %>
-                          <tr><td class="cov-key"><%= k %></td><td class="cov-val"><%= v %></td></tr>
-                        <% }) %>
-                      </table>
-                    <% } %>
-                    <% if (cov.extra && Object.keys(cov.extra).length > 0) { %>
-                      <div class="cov-section-title">ความคุ้มครองเพิ่มเติม</div>
-                      <table class="cov-table">
-                        <% Object.entries(cov.extra).forEach(function([k,v]) { %>
-                          <tr><td class="cov-key"><%= k %></td><td class="cov-val"><%= v %></td></tr>
-                        <% }) %>
-                      </table>
-                    <% } %>
-                  </div>
-                <% } %>
-
-                <!-- CTA per package -->
-                <div class="pub-pkg-cta-row">
-                  <a href="/click/line?token=<%= lead.token %>" class="pub-pkg-cta-line" target="_blank" rel="noopener">
-                    💬 รับรายละเอียดทาง LINE
-                  </a>
-                </div>
-              </article>
-            <% }) %>
+        <%
+          var countAuthorized = packages.filter(function(p) { return p.repair_type === 'authorized' }).length
+          var countFlood      = packages.filter(function(p) { return p.has_flood == 1 }).length
+        %>
+        <!-- Toolbar -->
+        <div class="result-toolbar">
+          <div class="result-filters">
+            <button class="filter-chip is-active" data-filter="all" type="button">
+              ทั้งหมด <span class="count"><%= packages.length %></span>
+            </button>
+            <% if (countAuthorized > 0) { %>
+            <button class="filter-chip" data-filter="authorized" type="button">
+              ซ่อมศูนย์ <span class="count"><%= countAuthorized %></span>
+            </button>
+            <% } %>
+            <% if (countFlood > 0) { %>
+            <button class="filter-chip" data-filter="flood" type="button">
+              คุ้มภัยน้ำท่วม <span class="count"><%= countFlood %></span>
+            </button>
+            <% } %>
           </div>
-        <% } else { %>
-          <div class="front-empty-card">
-            <h2>ยังไม่พบราคาในระบบสำหรับข้อมูลชุดนี้</h2>
-            <p>คุณยังสามารถติดต่อทีมงานได้ทันที เพื่อให้เราช่วยค้นหาแผนที่เหมาะสมให้</p>
-            <div class="front-side-actions" style="margin-top:1rem">
-              <a href="/click/line?token=<%= lead.token %>" class="front-line-btn" target="_blank" rel="noopener">💬 ติดต่อทาง LINE</a>
-              <a href="/click/facebook?token=<%= lead.token %>" class="front-facebook-btn" target="_blank" rel="noopener">📘 คุยผ่าน Facebook</a>
-            </div>
+          <div class="result-sort">
+            เรียง:
+            <select id="sortSelect">
+              <option value="asc">เบี้ยถูกสุด</option>
+              <option value="desc">เบี้ยแพงสุด (คุ้มครองสูง)</option>
+            </select>
           </div>
-        <% } %>
-
-        <div class="front-note-card">
-          <strong>ข้อมูลที่ใช้ในครั้งนี้</strong>
-          <p><%= new Date(lead.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %></p>
         </div>
+
+        <!-- Package list -->
+        <div class="result-grid" id="pkgList">
+          <% packages.forEach(function(pkg, i) { %>
+          <%
+            var displayPrice = pkg.premium_discounted && parseFloat(pkg.premium_discounted) < parseFloat(pkg.premium_amount)
+              ? parseFloat(pkg.premium_discounted)
+              : parseFloat(pkg.premium_amount)
+            var hasDiscount = pkg.premium_discounted && parseFloat(pkg.premium_discounted) < parseFloat(pkg.premium_amount)
+            var cov = pkg.coverage || {}
+            var ownEntries  = cov.own_vehicle  ? Object.entries(cov.own_vehicle)  : []
+            var thirdEntries= cov.third_party  ? Object.entries(cov.third_party)  : []
+            var extraEntries= cov.extra        ? Object.entries(cov.extra)        : []
+            var logoAbbr = getCompanyAbbr(pkg.company_name)
+            var pkgId = 'cov-' + i
+          %>
+          <article class="pkg <%= i === 0 ? 'is-best' : '' %>"
+                   data-price="<%= displayPrice %>"
+                   data-repair="<%= pkg.repair_type || '' %>"
+                   data-flood="<%= pkg.has_flood ? '1' : '0' %>"
+                   data-pkg-idx="<%= i %>">
+            <!-- Brand -->
+            <div class="pkg__brand">
+              <div class="pkg__brand-logo"><%= logoAbbr %></div>
+              <div>
+                <div class="pkg__brand-name"><%= pkg.company_name %></div>
+                <span class="pkg__brand-class">ประกันชั้น <%= pkg.insurance_class %></span>
+                <div class="pkg__badges">
+                  <% if (pkg.repair_type === 'authorized') { %><span class="pkg-badge pkg-badge--authorized">ซ่อมศูนย์</span><% } %>
+                  <% if (pkg.repair_type === 'garage') { %><span class="pkg-badge pkg-badge--garage">ซ่อมอู่</span><% } %>
+                  <% if (pkg.has_flood == 1) { %><span class="pkg-badge pkg-badge--flood">คุ้มน้ำท่วม</span><% } %>
+                </div>
+                <% if (hasDiscount) { %>
+                <div style="margin-top:4px;font-size:12px;color:var(--ink-4);text-decoration:line-through">฿<%= formatNumber(pkg.premium_amount) %></div>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- Features from real coverage data -->
+            <div class="pkg__features">
+              <% ownEntries.slice(0, 2).forEach(function(e) { %>
+              <div class="pkg__feat">
+                <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <%= e[0] %> <b style="margin-left:auto;color:var(--ink)">฿<%= e[1] %></b>
+              </div>
+              <% }) %>
+              <% thirdEntries.slice(0, 1).forEach(function(e) { %>
+              <div class="pkg__feat">
+                <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <%= e[0] %> <b style="margin-left:auto;color:var(--ink)">฿<%= e[1] %></b>
+              </div>
+              <% }) %>
+              <% if (ownEntries.length === 0 && thirdEntries.length === 0) { %>
+              <div class="pkg__feat" style="color:var(--ink-3);font-style:italic">ดูรายละเอียดความคุ้มครอง →</div>
+              <% } %>
+              <% if (ownEntries.length + thirdEntries.length + extraEntries.length > 3) { %>
+              <button class="pkg-expand-btn" onclick="togglePkgCov('<%= pkgId %>', this)" type="button">ดูความคุ้มครองทั้งหมด</button>
+              <% } %>
+            </div>
+
+            <!-- Price + Actions -->
+            <div class="pkg__price">
+              <div class="pkg__price-amount">
+                ฿<%= formatNumber(displayPrice) %><em>/ปี</em>
+              </div>
+              <div class="pkg__actions">
+                <a href="/click/line?token=<%= lead.token %>" class="btn-detail" target="_blank" rel="noopener">
+                  สนใจแผนนี้
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+                <button class="btn-compare" type="button" data-idx="<%= i %>">+ เปรียบเทียบ</button>
+              </div>
+            </div>
+
+            <!-- Coverage detail (hidden by default) -->
+            <% if (ownEntries.length + thirdEntries.length + extraEntries.length > 3) { %>
+            <div id="<%= pkgId %>" class="pkg-coverage-detail" style="grid-column:1/-1">
+              <% if (ownEntries.length > 0) { %>
+              <div class="cov-section">
+                <div class="cov-section-title">ความรับผิดต่อรถของคุณ</div>
+                <table class="cov-table">
+                  <% ownEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val">฿<%= e[1] %></td></tr><% }) %>
+                </table>
+              </div>
+              <% } %>
+              <% if (thirdEntries.length > 0) { %>
+              <div class="cov-section">
+                <div class="cov-section-title">ความรับผิดต่อบุคคลภายนอก</div>
+                <table class="cov-table">
+                  <% thirdEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val">฿<%= e[1] %></td></tr><% }) %>
+                </table>
+              </div>
+              <% } %>
+              <% if (extraEntries.length > 0) { %>
+              <div class="cov-section">
+                <div class="cov-section-title">ความคุ้มครองเพิ่มเติม</div>
+                <table class="cov-table">
+                  <% extraEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val">฿<%= e[1] %></td></tr><% }) %>
+                </table>
+              </div>
+              <% } %>
+            </div>
+            <% } %>
+          </article>
+          <% }) %>
+        </div>
+
+        <% } else { %>
+        <div class="result-empty">
+          <h2>ยังไม่พบราคาในระบบสำหรับข้อมูลชุดนี้</h2>
+          <p>คุณยังสามารถติดต่อทีมงานได้ทันที เพื่อให้เราช่วยค้นหาแผนที่เหมาะสมให้</p>
+          <a href="/click/line?token=<%= lead.token %>" class="btn-line" target="_blank" rel="noopener" style="display:inline-flex;width:auto">
+            <span class="btn-line__ico">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63h-1.755v1.125h1.755c.349 0 .63.283.63.63s-.281.628-.63.628h-2.385a.631.631 0 0 1-.627-.629V8.108c0-.345.281-.63.63-.63h2.385c.346 0 .627.285.627.63 0 .349-.281.63-.63.63h-1.755v1.125h1.755zm-3.855 3.016a.63.63 0 0 1-.629.629.62.62 0 0 1-.51-.252l-2.443-3.317v2.94a.63.63 0 1 1-1.257 0V8.108c0-.27.174-.51.432-.596.064-.021.133-.031.199-.031.196 0 .378.103.49.256l2.456 3.331V8.108a.63.63 0 1 1 1.262 0v4.771zm-5.741 0a.63.63 0 1 1-1.257 0V8.108a.629.629 0 1 1 1.257 0v4.771zm-2.466.629H4.917a.628.628 0 0 1-.626-.629V8.108a.63.63 0 1 1 1.255 0v4.141h1.757c.349 0 .629.283.629.63 0 .346-.282.629-.629.629zM24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.121.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+            </span>
+            <span class="btn-line__main"><b>ติดต่อทาง LINE</b><span>ทีมงานช่วยหาราคาให้</span></span>
+          </a>
+        </div>
+        <% } %>
       </div>
 
-      <!-- Sidebar: Contact Panel -->
-      <aside class="front-result-side-v2">
-        <div class="front-contact-card-v2">
-          <h2>ต้องการความช่วยเหลือ?</h2>
-          <p>ทีมเราพร้อมให้คำปรึกษาและช่วยเลือกแผนที่เหมาะกับคุณ</p>
-
-          <% if (lead.best_price) { %>
-            <div class="front-price-highlight">
-              <small>ราคาเริ่มต้นจากข้อมูลนี้</small>
-              <strong><%= formatNumber(lead.best_price) %></strong>
-              <span>บาท/ปี</span>
-            </div>
-          <% } %>
-
-          <div class="front-side-actions">
-            <a href="/click/line?token=<%= lead.token %>" class="front-line-btn" target="_blank" rel="noopener">
-              💬 ติดต่อทาง LINE
-            </a>
-            <a href="/click/facebook?token=<%= lead.token %>" class="front-facebook-btn" target="_blank" rel="noopener">
-              📘 คุยผ่าน Facebook
-            </a>
+      <!-- CTA Sidebar -->
+      <aside class="cta-sidebar">
+        <div class="cta-card">
+          <h3 class="cta-card__title">สนใจแผนประกัน?</h3>
+          <p class="cta-card__sub">ทีมผู้เชี่ยวชาญพร้อมช่วยเลือกแผนที่ใช่สำหรับคุณ</p>
+          <a class="btn-line" href="/click/line?token=<%= lead.token %>" target="_blank" rel="noopener">
+            <span class="btn-line__ico">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63h-1.755v1.125h1.755c.349 0 .63.283.63.63s-.281.628-.63.628h-2.385a.631.631 0 0 1-.627-.629V8.108c0-.345.281-.63.63-.63h2.385c.346 0 .627.285.627.63 0 .349-.281.63-.63.63h-1.755v1.125h1.755zm-3.855 3.016a.63.63 0 0 1-.629.629.62.62 0 0 1-.51-.252l-2.443-3.317v2.94a.63.63 0 1 1-1.257 0V8.108c0-.27.174-.51.432-.596.064-.021.133-.031.199-.031.196 0 .378.103.49.256l2.456 3.331V8.108a.63.63 0 1 1 1.262 0v4.771zm-5.741 0a.63.63 0 1 1-1.257 0V8.108a.629.629 0 1 1 1.257 0v4.771zm-2.466.629H4.917a.628.628 0 0 1-.626-.629V8.108a.63.63 0 1 1 1.255 0v4.141h1.757c.349 0 .629.283.629.63 0 .346-.282.629-.629.629zM24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.121.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+            </span>
+            <span class="btn-line__main">
+              <b>ติดต่อทาง LINE</b>
+              <span>ตอบใน 5 นาที</span>
+            </span>
+          </a>
+          <a class="btn-fb" href="/click/facebook?token=<%= lead.token %>" target="_blank" rel="noopener">
+            <span class="btn-fb__ico">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+            </span>
+            <span class="btn-fb__main">
+              <b>ติดต่อทาง Facebook</b>
+              <span>Inbox ตอบเร็ว</span>
+            </span>
+          </a>
+          <div class="cta-card__hint">
+            <span class="pulse"></span>
+            <span>มีทีมงานออนไลน์ • ตอบเร็วใน 5 นาที</span>
           </div>
+        </div>
 
-          <ul class="front-check-list">
-            <li>ทีมเราจะติดต่อกลับภายใน 5 นาที</li>
-            <li>ช่วยเลือกแผนให้เหมาะกับรถ</li>
-            <li>อธิบายรายละเอียดแบบเข้าใจง่าย</li>
+        <div class="cta-card cta-card--why">
+          <h3 class="cta-card__title">ทำไมต้องเลือกเรา?</h3>
+          <ul class="cta-card__list">
+            <li><span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> ฟรี ไม่มีค่าธรรมเนียม</li>
+
+            <li><span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> เครมง่ายผ่าน LINE 24 ชม.</li>
+            <li><span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> คปภ. รับรอง • SSL 256-bit</li>
           </ul>
         </div>
       </aside>
@@ -166,23 +236,146 @@
   </div>
 </section>
 
-<!-- Mobile Bottom CTA Bar -->
-<div class="pub-mobile-cta-bar">
-  <a href="/click/facebook?token=<%= lead.token %>" class="pub-mobile-cta-fb" target="_blank" rel="noopener">
-    📘 Facebook
+<!-- Compare bar (sticky bottom) -->
+<div class="compare-bar" id="compareBar">
+  <div class="compare-bar__left">
+    <span class="compare-bar__badge" id="compareBarBadge">0</span>
+    <span class="compare-bar__text" id="compareBarText">แผน / สูงสุด 3 แผน</span>
+    <button class="compare-bar__clear" id="compareBarClear" type="button">ล้างทั้งหมด</button>
+  </div>
+  <button class="compare-bar__go" id="compareBarGo" type="button" disabled>เปรียบเทียบเลย →</button>
+</div>
+
+<!-- Mobile fixed CTA bar -->
+<div class="mobile-cta">
+  <a class="mobile-cta__line" href="/click/line?token=<%= lead.token %>" target="_blank" rel="noopener">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63h-1.755v1.125h1.755c.349 0 .63.283.63.63s-.281.628-.63.628h-2.385a.631.631 0 0 1-.627-.629V8.108c0-.345.281-.63.63-.63h2.385c.346 0 .627.285.627.63 0 .349-.281.63-.63.63h-1.755v1.125h1.755zm-3.855 3.016a.63.63 0 0 1-.629.629.62.62 0 0 1-.51-.252l-2.443-3.317v2.94a.63.63 0 1 1-1.257 0V8.108c0-.27.174-.51.432-.596.064-.021.133-.031.199-.031.196 0 .378.103.49.256l2.456 3.331V8.108a.63.63 0 1 1 1.262 0v4.771zm-5.741 0a.63.63 0 1 1-1.257 0V8.108a.629.629 0 1 1 1.257 0v4.771zm-2.466.629H4.917a.628.628 0 0 1-.626-.629V8.108a.63.63 0 1 1 1.255 0v4.141h1.757c.349 0 .629.283.629.63 0 .346-.282.629-.629.629zM24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.121.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+    ติดต่อ LINE
   </a>
-  <a href="/click/line?token=<%= lead.token %>" class="pub-mobile-cta-line" target="_blank" rel="noopener">
-    💬 LINE
+  <a class="mobile-cta__fb" href="/click/facebook?token=<%= lead.token %>" target="_blank" rel="noopener">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+    Facebook
   </a>
 </div>
 
 <script>
-function toggleCoverage(id, btn) {
+// pkg coverage toggle
+function togglePkgCov(id, btn) {
   var el = document.getElementById(id)
   if (!el) return
-  var open = el.style.display !== 'none'
-  el.style.display = open ? 'none' : 'block'
-  btn.textContent = open ? 'ดูความคุ้มครอง' : 'ซ่อนความคุ้มครอง'
-  btn.classList.toggle('open', !open)
+  el.classList.toggle('is-open')
+  btn.textContent = el.classList.contains('is-open') ? 'ซ่อนความคุ้มครอง' : 'ดูความคุ้มครองทั้งหมด'
 }
+
+// filter chips
+;(function() {
+  var activeFilter = 'all'
+  document.querySelectorAll('.filter-chip[data-filter]').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      document.querySelectorAll('.filter-chip[data-filter]').forEach(function(c) { c.classList.remove('is-active') })
+      this.classList.add('is-active')
+      activeFilter = this.dataset.filter
+      applyFilter()
+    })
+  })
+  function applyFilter() {
+    document.querySelectorAll('#pkgList .pkg').forEach(function(card) {
+      var show = activeFilter === 'all' ||
+        (activeFilter === 'authorized' && card.dataset.repair === 'authorized') ||
+        (activeFilter === 'flood' && card.dataset.flood === '1')
+      card.style.display = show ? '' : 'none'
+    })
+  }
+})()
+
+// sort
+document.getElementById('sortSelect')?.addEventListener('change', function() {
+  var list = document.getElementById('pkgList')
+  if (!list) return
+  var cards = Array.from(list.querySelectorAll('.pkg'))
+  cards.sort(function(a, b) {
+    var pa = parseFloat(a.dataset.price) || 0
+    var pb = parseFloat(b.dataset.price) || 0
+    return this.value === 'asc' ? pa - pb : pb - pa
+  }.bind(this))
+  cards.forEach(function(c) { list.appendChild(c) })
+})
+
+// compare
+var PKG_DATA = <%- JSON.stringify(packages.map(function(p) {
+  return {
+    id: p.id,
+    company: p.company_name,
+    insurance_class: p.insurance_class,
+    price: parseFloat(p.premium_discounted && parseFloat(p.premium_discounted) < parseFloat(p.premium_amount) ? p.premium_discounted : p.premium_amount) || 0,
+    repair_type: p.repair_type || null,
+    has_flood: p.has_flood ? 1 : 0,
+    coverage: p.coverage || {}
+  }
+})).replace(/<\//g, '<\\/') %>;
+var LEAD_TOKEN = '<%= lead.token %>';
+
+;(function() {
+  var selected = []
+  var MAX = 3
+
+  function numFmt(n) { return Number(n).toLocaleString('th-TH') }
+
+  function updateBar() {
+    var bar  = document.getElementById('compareBar')
+    var badge = document.getElementById('compareBarBadge')
+    var text  = document.getElementById('compareBarText')
+    var go    = document.getElementById('compareBarGo')
+    if (!bar) return
+    bar.classList.toggle('is-visible', selected.length > 0)
+    badge.textContent = selected.length
+    var remaining = MAX - selected.length
+    text.textContent = selected.length >= MAX
+      ? 'แผน · เต็มแล้ว! (สูงสุด ' + MAX + ' แผน)'
+      : 'แผน · เพิ่มอีก ' + remaining + (remaining === 1 ? ' แผน' : ' แผน') + ' เพื่อเปรียบเทียบ'
+    go.disabled = selected.length < 2
+  }
+
+  function setBtn(idx, active) {
+    var btn = document.querySelector('.btn-compare[data-idx="' + idx + '"]')
+    if (!btn) return
+    btn.classList.toggle('is-selected', active)
+    btn.textContent = active ? '✓ เพิ่มแล้ว' : '+ เปรียบเทียบ'
+  }
+
+  function addPkg(idx) {
+    if (selected.indexOf(idx) !== -1 || selected.length >= MAX) return
+    selected.push(idx)
+    setBtn(idx, true)
+    updateBar()
+  }
+
+  function removePkg(idx) {
+    var i = selected.indexOf(idx)
+    if (i === -1) return
+    selected.splice(i, 1)
+    setBtn(idx, false)
+    updateBar()
+  }
+
+  document.querySelectorAll('.btn-compare').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var idx = parseInt(this.dataset.idx)
+      selected.indexOf(idx) !== -1 ? removePkg(idx) : addPkg(idx)
+    })
+  })
+
+  document.getElementById('compareBarClear')?.addEventListener('click', function() {
+    selected.slice().forEach(removePkg)
+  })
+
+  document.getElementById('compareBarGo')?.addEventListener('click', goCompare)
+
+  function goCompare() {
+    var ids = selected.map(function(idx) { return PKG_DATA[idx] && PKG_DATA[idx].id }).filter(Boolean).join(',')
+    if (!ids) return
+    window.location.href = '/compare-view?pkg_ids=' + ids + '&token=' + LEAD_TOKEN
+  }
+
+})()
 </script>

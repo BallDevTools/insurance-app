@@ -1,0 +1,1 @@
+ALTER TABLE affiliates ADD COLUMN click_count INT NOT NULL DEFAULT 0;

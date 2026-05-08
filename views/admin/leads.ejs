@@ -1,6 +1,22 @@
+<!-- TAB BAR (superadmin only) -->
+<% if (admin.role === 'superadmin') { %>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+  <% const tabs = [['all','ทั้งหมด'],['direct','Direct'],['affiliate','Affiliate']] %>
+  <% tabs.forEach(([v,label]) => { %>
+    <a href="/admin/leads?view=<%= v %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>"
+       style="padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;
+              background:<%= tabView===v ? '#7c3aed' : '#f1f5f9' %>;
+              color:<%= tabView===v ? '#fff' : '#64748b' %>">
+      <%= label %>
+    </a>
+  <% }) %>
+</div>
+<% } %>
+
 <!-- FILTER -->
 <div class="adm-card adm-filter-card">
   <form action="/admin/leads" method="GET" class="adm-filter-form">
+    <input type="hidden" name="view" value="<%= tabView %>">
     <input type="text" name="q" value="<%= filters.q %>" placeholder="🔍 ค้นหา ชื่อ / เบอร์ / ยี่ห้อ">
     <select name="funnel_stage">
       <option value="">ทุก Stage</option>
@@ -22,15 +38,8 @@
       <option value="facebook_ads" <%= filters.source==='facebook_ads'?'selected':'' %>>Facebook Ads</option>
       <option value="google"       <%= filters.source==='google'?'selected':'' %>>Google</option>
     </select>
-    <% if (admin.role === 'superadmin') { %>
-    <select name="aff_filter">
-      <option value="">ทุก Leads</option>
-      <option value="direct" <%= filters.aff_filter==='direct'?'selected':'' %>>Direct (ไม่มี affiliate)</option>
-      <option value="affiliate" <%= filters.aff_filter==='affiliate'?'selected':'' %>>มี Affiliate</option>
-    </select>
-    <% } %>
     <button type="submit" class="adm-btn adm-btn-primary">ค้นหา</button>
-    <a href="/admin/leads" class="adm-btn adm-btn-ghost">ล้าง</a>
+    <a href="/admin/leads?view=<%= tabView %>" class="adm-btn adm-btn-ghost">ล้าง</a>
   </form>
 </div>
 
@@ -48,14 +57,15 @@
         <th>Stage</th>
         <th>CTA</th>
         <th>แหล่ง</th>
+        <% if (admin.role === 'superadmin' && tabView === 'affiliate') { %><th>Affiliate</th><% } %>
         <th>สถานะ</th>
-        <% if (admin.role === 'superadmin') { %><th>Commission</th><% } %>
+        <% if (admin.role === 'superadmin' && tabView !== 'direct') { %><th>Commission</th><% } %>
         <th>วันที่</th>
         <th>Action</th>
       </tr></thead>
       <tbody>
         <% if (!leads.length) { %>
-          <tr><td colspan="9" class="adm-empty-cell">ไม่พบข้อมูล</td></tr>
+          <tr><td colspan="10" class="adm-empty-cell">ไม่พบข้อมูล</td></tr>
         <% } %>
         <% const FUNNEL_MAP = { cold:'👀 แวะดู', warm:'🤔 กำลังคิด', hot:'💰 พร้อมซื้อ' } %>
         <% leads.forEach(l=>{ %>
@@ -88,10 +98,17 @@
             <td>
               <div><%= SOURCE_MAP[l.source] || l.source %></div>
               <% if (l.utm_campaign) { %><div class="adm-sub"><%= l.utm_campaign %></div><% } %>
-              <% if (l.aff_slug) { %><div style="font-size:11px;color:#7c3aed;margin-top:2px">🤝 <%= l.aff_slug %></div><% } %>
             </td>
+            <% if (admin.role === 'superadmin' && tabView === 'affiliate') { %>
+            <td style="font-size:12px">
+              <% if (l.aff_slug) { %>
+                <div style="font-weight:600;color:#7c3aed">🤝 <%= l.aff_slug %></div>
+                <% if (l.aff_name) { %><div class="adm-sub"><%= l.aff_name %></div><% } %>
+              <% } else { %><span style="color:#cbd5e1">-</span><% } %>
+            </td>
+            <% } %>
             <td><span class="adm-status adm-status-<%= l.status %>"><%= LEAD_STATUS_MAP[l.status] || l.status %></span></td>
-            <% if (admin.role === 'superadmin') { %>
+            <% if (admin.role === 'superadmin' && tabView !== 'direct') { %>
             <td style="font-size:12px">
               <% if (l.commission_amount) { %>
                 <div style="color:<%= l.commission_paid ? '#059669' : '#f59e0b' %>">
@@ -127,7 +144,7 @@
   <% if (totalPages > 1) { %>
     <div class="adm-pagination">
       <% for (let i=1; i<=totalPages; i++) { %>
-        <a href="?page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>&aff_filter=<%= filters.aff_filter||'' %>"
+        <a href="?view=<%= tabView %>&page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>"
            class="adm-page-btn <%= page===i?'active':'' %>"><%= i %></a>
       <% } %>
     </div>

@@ -1,265 +1,331 @@
 <!-- HERO -->
-<section class="front-hero">
-  <div class="container">
-    <div class="front-hero-grid">
-
-      <!-- Left: Copy -->
-      <div class="front-hero-copy">
-        <div class="front-pill">✨ เปรียบเทียบแผนจาก 12+ บริษัทชั้นนำ</div>
-
-        <h1>เช็คราคาประกันรถ<br><span style="color:var(--front-primary)">ใน 30 วินาที</span></h1>
-
-        <p>เลือกยี่ห้อ รุ่น ปีรถ แล้วดูราคาเบื้องต้นได้ทันที<br>ไม่ต้องกรอกข้อมูลเยอะ ไม่ต้องรอนาน</p>
-
-        <div class="pub-trust-row">
-          <span class="pub-trust-item">✓ ไม่มีค่าธรรมเนียมซ่อนเร้น</span>
-          <span class="pub-trust-item">✓ ใช้บริการฟรี 100%</span>
+<section class="hero">
+  <div class="container hero__grid">
+    <div>
+      <span class="hero__eyebrow">โบรกเกอร์ประกันภัยออนไลน์ #1 ของไทย</span>
+      <h1>ประกันรถ <em>เช็คเบี้ย</em><br>เปรียบเทียบ จบในที่เดียว</h1>
+      <p class="lede">เปรียบเทียบจาก 12+ บริษัทชั้นนำ ฟรี ไม่มีค่าธรรมเนียม พร้อมส่วนลดสูงสุด 30% และผ่อน 0% นาน 10 เดือน</p>
+      <div class="hero__features">
+        <div class="hero__feature"><span class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>ฟรี ไม่มีค่าธรรมเนียม</div>
+        <div class="hero__feature"><span class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>กรอกข้อมูลครั้งเดียว</div>
+        <div class="hero__feature"><span class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>คปภ. รับรอง</div>
+        <div class="hero__feature"><span class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>เครมง่ายผ่าน LINE</div>
+      </div>
+      <div class="hero__brands">
+        <div class="hero__brands-label">บริษัทประกันที่ร่วมรายการ</div>
+        <div class="hero__brands-row">
+          <% (insurers && insurers.length > 0 ? insurers : []).slice(0, 8).forEach(function(ins) { %>
+          <span class="brand-chip"><%= ins.short_name || ins.name.substring(0, 8) %></span>
+          <% }) %>
         </div>
       </div>
-
-      <!-- Right: Form Card -->
-      <div class="front-form-card-wrap">
-        <div class="front-form-card-head">
-          <h2>เช็คราคาประกัน</h2>
-          <p>กรอกข้อมูลรถเพียงไม่กี่รายการ แล้วดูราคาเบื้องต้นได้ทันที</p>
-        </div>
-
-        <form action="/quote" method="POST" id="carForm" novalidate>
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <input type="hidden" name="utm_source" value="<%= utm.source || '' %>">
-          <input type="hidden" name="utm_campaign" value="<%= utm.campaign || '' %>">
-          <input type="hidden" name="utm_medium" value="<%= utm.medium || '' %>">
-          <input type="hidden" name="utm_content" value="<%= utm.content || '' %>">
-          <input type="hidden" name="partial_token" id="partial_token" value="">
-
-          <div class="front-form-grid">
-            <div class="front-field">
-              <label for="car_brand_id">ยี่ห้อรถ</label>
-              <div class="select-wrapper">
-                <select id="car_brand_id" name="car_brand_id" class="<%= errors.car_brand ? 'error' : '' %>" required>
-                  <option value="">เลือกยี่ห้อ</option>
-                  <% brands.forEach(b => { %>
-                    <option value="<%= b.id %>" <%= old.car_brand_id == b.id ? 'selected' : '' %>><%= b.name %></option>
-                  <% }) %>
-                </select>
-              </div>
-              <input type="hidden" id="car_brand" name="car_brand" value="<%= old.car_brand || '' %>">
-              <% if (errors.car_brand) { %><span class="field-error"><%= errors.car_brand %></span><% } %>
-            </div>
-
-            <div class="front-field">
-              <label for="car_model_id">รุ่นรถ</label>
-              <div class="select-wrapper">
-                <select id="car_model_id" name="car_model_id" class="<%= errors.car_model ? 'error' : '' %>" required data-default-model-id="<%= old.car_model_id || '' %>">
-                  <option value="">เลือกรุ่นรถ</option>
-                  <% if (old.car_model_id) { %>
-                    <option value="<%= old.car_model_id %>" selected><%= old.car_model %></option>
-                  <% } %>
-                </select>
-              </div>
-              <input type="hidden" id="car_model" name="car_model" value="<%= old.car_model || '' %>">
-              <% if (errors.car_model) { %><span class="field-error"><%= errors.car_model %></span><% } %>
-            </div>
-
-            <div class="front-field">
-              <label for="car_year">ปีรถ</label>
-              <div class="select-wrapper">
-                <select id="car_year" name="car_year" class="<%= errors.car_year ? 'error' : '' %>" required>
-                  <option value="">เลือกปี</option>
-                  <% years.forEach(y => { %>
-                    <option value="<%= y %>" <%= old.car_year == y ? 'selected' : '' %>><%= y %> (พ.ศ. <%= y + 543 %>)</option>
-                  <% }) %>
-                </select>
-              </div>
-              <% if (errors.car_year) { %><span class="field-error"><%= errors.car_year %></span><% } %>
-            </div>
-
-          </div>
-
-          <div class="front-plan-picker">
-            <div class="front-plan-copy">
-              <h3>ประเภทประกันที่สนใจ</h3>
-              <p>เลือกแผนที่ตรงกับความต้องการ เพื่อดูราคาได้แม่นยำขึ้น</p>
-            </div>
-            <div class="front-plan-grid">
-              <label class="front-plan-card">
-                <input type="radio" name="insurance_type" value="class1" <%= old.insurance_type === 'class1' ? 'checked' : '' %> required>
-                <span class="front-plan-badge">ชั้น 1</span>
-                <strong>คุ้มครองสูงสุด</strong>
-                <small>เหมาะกับคนที่อยากได้ความมั่นใจสูง</small>
-              </label>
-              <label class="front-plan-card">
-                <input type="radio" name="insurance_type" value="class2plus" <%= old.insurance_type === 'class2plus' ? 'checked' : '' %>>
-                <span class="front-plan-badge">ชั้น 2+</span>
-                <strong>สมดุลราคาและความคุ้มครอง</strong>
-                <small>ตัวเลือกยอดนิยมสำหรับการใช้งานทั่วไป</small>
-              </label>
-              <label class="front-plan-card">
-                <input type="radio" name="insurance_type" value="class3plus" <%= old.insurance_type === 'class3plus' ? 'checked' : '' %>>
-                <span class="front-plan-badge">ชั้น 3+</span>
-                <strong>เริ่มต้นประหยัดกว่า</strong>
-                <small>เหมาะกับคนที่อยากเริ่มต้นก่อน</small>
-              </label>
-            </div>
-            <% if (errors.insurance_type) { %><span class="field-error"><%= errors.insurance_type %></span><% } %>
-          </div>
-
-          <details class="front-optional-box">
-            <summary>เพิ่มข้อมูลติดต่อ (ไม่บังคับ)</summary>
-            <div class="front-form-grid front-form-grid-optional">
-              <div class="front-field">
-                <label for="name">ชื่อ</label>
-                <input type="text" id="name" name="name" placeholder="ชื่อของคุณ" value="<%= old.name || '' %>" maxlength="200">
-              </div>
-              <div class="front-field">
-                <label for="phone">เบอร์โทร</label>
-                <input type="tel" id="phone" name="phone" placeholder="0XX-XXX-XXXX" value="<%= old.phone || '' %>" maxlength="12">
-              </div>
-            </div>
-          </details>
-
-          <div class="front-cta-row">
-            <button type="submit" class="front-primary-btn" id="submitBtn">ดูราคาเบื้องต้น →</button>
-          </div>
-          <p class="front-note">ราคาในหน้าถัดไปเป็นราคาเบื้องต้นจากข้อมูลจริง</p>
-        </form>
-
-        <!-- Concierge CTA -->
-        <div class="concierge-divider">
-          <span>หรือ</span>
-        </div>
-        <div class="concierge-cta-row">
-          <button type="button" class="concierge-trigger-btn" id="conciergeToggle">
-            📞 ให้เราโทรกลับ
-          </button>
-          <% if (lineOaUrl) { %>
-          <a href="<%= lineOaUrl %>" class="concierge-line-btn" target="_blank" rel="noopener">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.03 2 11c0 3.13 1.73 5.88 4.34 7.56-.19.67-.7 2.44-.8 2.82-.12.47.18.46.37.34.15-.1 2.42-1.6 3.4-2.25.55.08 1.12.12 1.69.12 5.52 0 10-4.03 10-9C22 6.03 17.52 2 12 2zm-5 12.5v-5h1.5v3.5H11v1.5H7zm4 0v-5h1.5v5H11zm5.5 0h-1.5l-2-3v3H11.5v-5H13l2 3v-3h1.5v5z"/></svg>
-            คุยทาง LINE เลย
-          </a>
-          <% } %>
-        </div>
-
-        <!-- Concierge Panel (hidden by default) -->
-        <div id="conciergePanel" class="concierge-panel" style="display:none">
-          <div class="concierge-panel-head">
-            <strong>ให้เราโทรกลับหาคุณ</strong>
-            <p>ทีมงานจะโทรหาคุณภายใน 5 นาที เพื่อช่วยเลือกแผนที่เหมาะสม</p>
-          </div>
-          <div class="front-form-grid front-form-grid-optional">
-            <div class="front-field">
-              <label for="c_name">ชื่อ (ไม่บังคับ)</label>
-              <input type="text" id="c_name" name="c_name" placeholder="ชื่อของคุณ" maxlength="200" autocomplete="name">
-            </div>
-            <div class="front-field">
-              <label for="c_phone">เบอร์โทร <span style="color:#dc2626">*</span></label>
-              <input type="tel" id="c_phone" name="c_phone" placeholder="0XX-XXX-XXXX" maxlength="12" autocomplete="tel">
-              <span class="field-error" id="c_phone_err" style="display:none">กรุณากรอกเบอร์โทรให้ถูกต้อง</span>
-            </div>
-          </div>
-          <button type="button" class="front-primary-btn" id="conciergeSubmit" style="width:100%;margin-top:.5rem">
-            ให้เราโทรกลับ →
-          </button>
-          <div id="conciergeSuccess" class="concierge-success" style="display:none">
-            ✅ รับแล้วครับ! ทีมจะโทรกลับหาคุณเร็วๆ นี้
-          </div>
-        </div>
-
-      </div>
-
     </div>
+
+    <!-- Quote Card -->
+    <div class="quote-card">
+      <div class="quote-card__head">
+        <div class="quote-card__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div>
+          <div class="quote-card__title">เช็คเบี้ยประกันรถยนต์ ฟรี!</div>
+          <div class="quote-card__sub">รู้ราคาภายใน 30 วินาที — ไม่ต้องสมัครสมาชิก</div>
+        </div>
+      </div>
+
+      <form action="/quote" method="POST" id="carForm" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="utm_source" value="<%= utm.source || '' %>">
+        <input type="hidden" name="utm_campaign" value="<%= utm.campaign || '' %>">
+        <input type="hidden" name="utm_medium" value="<%= utm.medium || '' %>">
+        <input type="hidden" name="utm_content" value="<%= utm.content || '' %>">
+        <input type="hidden" name="partial_token" id="partial_token" value="">
+
+        <div class="field-grid">
+          <div class="field">
+            <label>ยี่ห้อรถ <em>*</em></label>
+            <div class="cs-wrap <%= errors.car_brand ? 'cs-wrap--error' : '' %>"
+                 id="cs-brand"
+                 data-init-id="<%= old.car_brand_id || '' %>"
+                 data-init-name="<%= old.car_brand || '' %>">
+              <div class="cs-trigger" tabindex="0">
+                <span class="cs-val<%= !old.car_brand ? ' cs-val--ph' : '' %>"><%= old.car_brand || 'เลือกยี่ห้อ' %></span>
+                <svg class="cs-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+              <div class="cs-drop">
+                <div class="cs-search-wrap">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input class="cs-search" type="text" placeholder="ค้นหายี่ห้อ..." autocomplete="off">
+                </div>
+                <ul class="cs-list">
+                  <li class="cs-item cs-item--ph" data-value="">เลือกยี่ห้อ</li>
+                  <% brands.forEach(function(b) { %>
+                  <li class="cs-item<%= old.car_brand_id == b.id ? ' cs-item--active' : '' %>" data-value="<%= b.id %>" data-label="<%= b.name %>"><%= b.name %></li>
+                  <% }) %>
+                </ul>
+              </div>
+            </div>
+            <input type="hidden" id="car_brand_id" name="car_brand_id" value="<%= old.car_brand_id || '' %>">
+            <input type="hidden" id="car_brand"    name="car_brand"    value="<%= old.car_brand || '' %>">
+            <% if (errors.car_brand) { %><span class="field-error"><%= errors.car_brand %></span><% } %>
+          </div>
+
+          <div class="field">
+            <label>รุ่นรถ <em>*</em></label>
+            <div class="cs-wrap <%= errors.car_model ? 'cs-wrap--error' : '' %> <%= !old.car_brand_id ? 'cs-wrap--disabled' : '' %>"
+                 id="cs-model"
+                 data-init-id="<%= old.car_model_id || '' %>"
+                 data-init-name="<%= old.car_model || '' %>">
+              <div class="cs-trigger" tabindex="0">
+                <span class="cs-val<%= !old.car_model ? ' cs-val--ph' : '' %>"><%= old.car_model || 'เลือกรุ่นรถ' %></span>
+                <svg class="cs-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+              <div class="cs-drop">
+                <div class="cs-search-wrap">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input class="cs-search" type="text" placeholder="ค้นหารุ่นรถ..." autocomplete="off">
+                </div>
+                <ul class="cs-list">
+                  <li class="cs-item cs-item--ph" data-value="">เลือกรุ่นรถ</li>
+                  <% if (old.car_model_id) { %>
+                  <li class="cs-item cs-item--active" data-value="<%= old.car_model_id %>" data-label="<%= old.car_model %>"><%= old.car_model %></li>
+                  <% } %>
+                </ul>
+              </div>
+            </div>
+            <input type="hidden" id="car_model_id" name="car_model_id" value="<%= old.car_model_id || '' %>">
+            <input type="hidden" id="car_model"    name="car_model"    value="<%= old.car_model || '' %>">
+            <% if (errors.car_model) { %><span class="field-error"><%= errors.car_model %></span><% } %>
+          </div>
+
+          <div class="field">
+            <label>ปีรถ <em>*</em></label>
+            <div class="cs-wrap <%= errors.car_year ? 'cs-wrap--error' : '' %>" id="cs-year">
+              <div class="cs-trigger" tabindex="0">
+                <span class="cs-val<%= !old.car_year ? ' cs-val--ph' : '' %>"><%= old.car_year || 'เลือกปี' %></span>
+                <svg class="cs-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+              <div class="cs-drop">
+                <ul class="cs-list">
+                  <li class="cs-item cs-item--ph" data-value="">เลือกปี</li>
+                  <% years.forEach(function(y) { %>
+                  <li class="cs-item<%= old.car_year == y ? ' cs-item--active' : '' %>" data-value="<%= y %>" data-label="<%= y %>"><%= y %></li>
+                  <% }) %>
+                </ul>
+              </div>
+            </div>
+            <input type="hidden" id="car_year" name="car_year" value="<%= old.car_year || '' %>">
+            <% if (errors.car_year) { %><span class="field-error"><%= errors.car_year %></span><% } %>
+          </div>
+        </div>
+
+        <div class="class-label">เลือกประเภทประกัน</div>
+        <% if (errors.insurance_type) { %><span class="field-error"><%= errors.insurance_type %></span><% } %>
+
+        <div class="class-cards">
+          <%
+            var classes = [
+              { v: 'class1',    num: 'ชั้น 1',  label: 'คุ้มครองครอบคลุม', sub: 'เริ่ม ฿13,500/ปี' },
+              { v: 'class2plus',num: 'ชั้น 2+', label: 'ชนกับยานพาหนะ',  sub: 'เริ่ม ฿8,900/ปี' },
+              { v: 'class3plus',num: 'ชั้น 3+', label: 'เบี้ยถูก คุ้มค่า',  sub: 'เริ่ม ฿5,400/ปี' },
+            ]
+            var defaultCls = old.insurance_type || 'class1'
+          %>
+          <% classes.forEach(c => { %>
+          <label class="class-card <%= defaultCls === c.v ? 'is-active' : '' %>">
+            <input type="radio" name="insurance_type" value="<%= c.v %>" <%= defaultCls === c.v ? 'checked' : '' %>>
+            <span class="class-card__check">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </span>
+            <span class="class-card__num"><%= c.num %></span>
+            <span class="class-card__label"><%= c.label %></span>
+            <span class="class-card__sub"><%= c.sub %></span>
+          </label>
+          <% }) %>
+        </div>
+
+        <!-- Optional contact fields -->
+        <details class="quote-optional">
+          <summary>เพิ่มข้อมูลติดต่อ (ไม่บังคับ) — รับข้อเสนอพิเศษจากทีมงาน</summary>
+          <div class="field">
+            <label for="phone">เบอร์โทร</label>
+            <div class="control"><input type="tel" id="phone" name="phone" placeholder="0XX-XXX-XXXX" value="<%= old.phone || '' %>" maxlength="12"></div>
+          </div>
+        </details>
+
+        <button type="submit" class="btn-quote" id="submitBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          ค้นหาแผนประกันที่ใช่
+        </button>
+      </form>
+
+
+      <!-- Concierge -->
+      <div class="concierge-divider"><span>หรือ</span></div>
+      <div class="concierge-cta-row">
+        <button type="button" class="btn-callback" id="conciergeToggle" style="flex:1">
+          📞 ให้เราโทรกลับ
+        </button>
+        <% if (lineOaUrl) { %>
+        <a href="<%= lineOaUrl %>" class="concierge-line-btn" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63h-1.755v1.125h1.755c.349 0 .63.283.63.63s-.281.628-.63.628h-2.385a.631.631 0 0 1-.627-.629V8.108c0-.345.281-.63.63-.63h2.385c.346 0 .627.285.627.63 0 .349-.281.63-.63.63h-1.755v1.125h1.755zm-3.855 3.016a.63.63 0 0 1-.629.629.62.62 0 0 1-.51-.252l-2.443-3.317v2.94a.63.63 0 1 1-1.257 0V8.108c0-.27.174-.51.432-.596.064-.021.133-.031.199-.031.196 0 .378.103.49.256l2.456 3.331V8.108a.63.63 0 1 1 1.262 0v4.771zm-5.741 0a.63.63 0 1 1-1.257 0V8.108a.629.629 0 1 1 1.257 0v4.771zm-2.466.629H4.917a.628.628 0 0 1-.626-.629V8.108a.63.63 0 1 1 1.255 0v4.141h1.757c.349 0 .629.283.629.63 0 .346-.282.629-.629.629zM24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.121.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+          LINE เลย
+        </a>
+        <% } %>
+      </div>
+      <div id="conciergePanel" class="concierge-panel" style="display:none">
+        <h4>ให้เราโทรกลับหาคุณ</h4>
+        <div class="field">
+          <label for="c_phone">เบอร์โทร <span style="color:#dc2626">*</span></label>
+          <div class="control"><input type="tel" id="c_phone" placeholder="0XX-XXX-XXXX" maxlength="12" autocomplete="tel"></div>
+          <span class="field-error" id="c_phone_err" style="display:none">กรุณากรอกเบอร์โทรให้ถูกต้อง</span>
+        </div>
+        <button type="button" class="btn-quote" id="conciergeSubmit" style="margin-top:10px">ให้เราโทรกลับ →</button>
+        <div id="conciergeSuccess" class="concierge-success" style="display:none">✅ รับแล้วครับ! ทีมจะโทรกลับหาคุณเร็วๆ นี้</div>
+      </div>
+    </div><!-- /quote-card -->
   </div>
 </section>
 
 <!-- TRUST STRIP -->
-<section class="pub-trust-strip" id="insurers">
+<section class="trust">
   <div class="container">
-    <div class="pub-trust-stats">
-      <div class="pub-trust-stat">
-        <div class="pub-trust-stat-icon">🛡️</div>
-        <div class="pub-trust-stat-num">12+</div>
-        <div class="pub-trust-stat-lbl">บริษัทประกันชั้นนำ</div>
+    <div class="trust__inner">
+      <div class="trust__cell">
+        <div class="trust__icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3z"/></svg>
+        </div>
+        <div>
+          <div class="trust__num">12+</div>
+          <div class="trust__label-top">บริษัทประกันชั้นนำ</div>
+          <div class="trust__label-bot">ครบทุกแบรนด์ในที่เดียว</div>
+        </div>
       </div>
-      <div class="pub-trust-stat">
-        <div class="pub-trust-stat-icon">👥</div>
-        <div class="pub-trust-stat-num">50,000+</div>
-        <div class="pub-trust-stat-lbl">ลูกค้าที่ไว้วางใจ</div>
+      <div class="trust__cell">
+        <div class="trust__icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div>
+          <div class="trust__num">50,000+</div>
+          <div class="trust__label-top">ลูกค้าไว้วางใจ</div>
+          <div class="trust__label-bot">เลือกซื้อกับเราในปีที่ผ่านมา</div>
+        </div>
       </div>
-      <div class="pub-trust-stat">
-        <div class="pub-trust-stat-icon">⭐</div>
-        <div class="pub-trust-stat-num">4.8/5</div>
-        <div class="pub-trust-stat-lbl">คะแนนรีวิว</div>
-      </div>
-    </div>
-    <div class="pub-insurers-row">
-      <p class="pub-insurers-label">บริษัทประกันภัยชั้นนำที่ร่วมงานกับเรา</p>
-      <div class="pub-insurers-list">
-        <span>วิริยะ</span>
-        <span>กรุงเทพประกันภัย</span>
-        <span>เมืองไทยประกันภัย</span>
-        <span>AXA</span>
-        <span>AIG</span>
-        <span>Allianz</span>
+      <div class="trust__cell">
+        <div class="trust__icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        </div>
+        <div>
+          <div class="trust__num">4.8/5</div>
+          <div class="trust__label-top">คะแนนความพึงพอใจ</div>
+          <div class="trust__label-bot">จากรีวิวลูกค้าจริงกว่า 8,000 คน</div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- WHY US -->
-<section class="front-section" id="about">
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
   <div class="container">
-    <div class="front-section-head">
-      <h2>ทำไมต้องเลือกเรา</h2>
-      <p>เราทำให้การเลือกประกันรถง่ายและรวดเร็ว ไม่มีค่าธรรมเนียมซ่อนเร้น</p>
+    <div class="how__head">
+      <span class="how__eyebrow">ขั้นตอนง่าย ๆ</span>
+      <h2>เช็คเบี้ยประกันรถ ใน 3 ขั้นตอน</h2>
+      <p class="how__sub">ไม่ต้องโทรหาบริษัทประกันทีละเจ้า — เราเปรียบเทียบให้คุณในที่เดียว</p>
     </div>
-    <div class="front-benefit-grid">
-      <article class="front-benefit-card">
-        <div class="pub-benefit-icon">⚡</div>
-        <strong>เช็คราคาใน 30 วินาที</strong>
-        <p>เพียงเลือกรถและดูราคาจากหลายบริษัท ไม่ต้องรอนาน ไม่ต้องกรอกข้อมูลเยอะ</p>
-      </article>
-      <article class="front-benefit-card">
-        <div class="pub-benefit-icon">🛡️</div>
-        <strong>เปรียบเทียบแผนประกันชั้นนำ</strong>
-        <p>เราคัดสรรแผนประกันจากบริษัทชั้นนำ มีคุณภาพ ราคาใสสะอาด ครบจบในที่เดียว</p>
-      </article>
-      <article class="front-benefit-card">
-        <div class="pub-benefit-icon">⏰</div>
-        <strong>ขอใบเสนอราคาภายใน 5 นาที</strong>
-        <p>ส่งข้อมูลผ่าน LINE ทีมเราจะส่งใบเสนอราคาเต็มให้ภายใน 5 นาที</p>
-      </article>
+    <div class="steps">
+      <div class="step">
+        <div class="step__num">1</div>
+        <div class="step__icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h2v-3.34a4 4 0 0 0-1.17-2.83L17 7H7L4.17 9.83A4 4 0 0 0 3 12.66V16h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+        </div>
+        <h3>กรอกข้อมูลรถ</h3>
+        <p>บอกเรายี่ห้อ รุ่น และปีรถ ใช้เวลาแค่ 30 วินาที ไม่ต้องสมัครสมาชิก</p>
+      </div>
+      <div class="step">
+        <div class="step__num">2</div>
+        <div class="step__icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <h3>เห็นราคาจริงทันที</h3>
+        <p>เปรียบเทียบเบี้ยจาก 12+ บริษัทเรียงตามราคาและความคุ้มครอง</p>
+      </div>
+      <div class="step">
+        <div class="step__num">3</div>
+        <div class="step__icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63h-1.755v1.125h1.755c.349 0 .63.283.63.63s-.281.628-.63.628h-2.385a.631.631 0 0 1-.627-.629V8.108c0-.345.281-.63.63-.63h2.385c.346 0 .627.285.627.63 0 .349-.281.63-.63.63h-1.755v1.125h1.755zm-3.855 3.016a.63.63 0 0 1-.629.629.62.62 0 0 1-.51-.252l-2.443-3.317v2.94a.63.63 0 1 1-1.257 0V8.108c0-.27.174-.51.432-.596.064-.021.133-.031.199-.031.196 0 .378.103.49.256l2.456 3.331V8.108a.63.63 0 1 1 1.262 0v4.771zm-5.741 0a.63.63 0 1 1-1.257 0V8.108a.629.629 0 1 1 1.257 0v4.771zm-2.466.629H4.917a.628.628 0 0 1-.626-.629V8.108a.63.63 0 1 1 1.255 0v4.141h1.757c.349 0 .629.283.629.63 0 .346-.282.629-.629.629zM24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.121.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+        </div>
+        <h3>ติดต่อผ่าน LINE</h3>
+        <p>ทีมงานพร้อมช่วยเลือกแผนที่เหมาะกับคุณ ตอบกลับใน 5 นาที จัดส่งกรมธรรม์ฟรี</p>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- FAQ -->
-<section class="front-section front-section-soft" id="faq">
+<section class="faq" id="faq">
   <div class="container">
-    <div class="front-section-head">
-      <h2>คำถามที่พบบ่อย</h2>
-      <p>มีคำถามเพิ่มเติม? เรายินดีตอบทุกข้อสงสัย</p>
+    <div class="faq__head">
+      <span class="how__eyebrow">คำถามที่พบบ่อย</span>
+      <h2>มีคำถาม? เรามีคำตอบ</h2>
+      <p>คำตอบสำหรับเรื่องที่ลูกค้าถามบ่อยที่สุด</p>
     </div>
-    <div class="front-faq-list">
-      <article class="front-faq-item">
-        <strong>ใช้บริการฟรีจริงไหม?</strong>
-        <p>ใช่ครับ บริการของเราฟรี 100% ทั้งการเช็คราคาและขอใบเสนอราคา ไม่มีค่าธรรมเนียมใดๆ</p>
-      </article>
-      <article class="front-faq-item">
-        <strong>ราคาที่เห็นคือราคาจริงไหม?</strong>
-        <p>ราคาที่แสดงเป็นราคาเบื้องต้นจากบริษัทประกัน ราคาจริงอาจแตกต่างเล็กน้อยตามรายละเอียดรถและประวัติการใช้งาน</p>
-      </article>
-      <article class="front-faq-item">
-        <strong>ต้องเตรียมเอกสารอะไรบ้าง?</strong>
-        <p>สำเนาทะเบียนรถ บัตรประชาชน และใบขับขี่ ทีมเราจะแจ้งรายละเอียดเพิ่มเติมเมื่อคุณตัดสินใจซื้อ</p>
-      </article>
-      <article class="front-faq-item">
-        <strong>หลังจากกรอกข้อมูลแล้วจะเห็นอะไร?</strong>
-        <p>คุณจะเห็นราคาเบื้องต้นและตัวเลือกแผนประกันที่เหมาะกับรถ พร้อมช่องทางติดต่อทีมงานได้ทันที</p>
-      </article>
-      <article class="front-faq-item">
-        <strong>ถ้ามีปัญหาหลังซื้อประกันติดต่อใคร?</strong>
-        <p>ติดต่อทีมเราผ่าน LINE หรือโทรได้ตลอด เราพร้อมช่วยเหลือและประสานงานกับบริษัทประกันให้</p>
-      </article>
+    <div class="faq__list">
+      <div class="faq-item is-open">
+        <button class="faq-item__q" type="button">
+          <span class="num">01</span>
+          <span>ประกันชั้น 1 ต่างจากชั้น 2+ และ 3+ อย่างไร?</span>
+          <span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="faq-item__a">ประกันชั้น 1 คุ้มครองครอบคลุมทุกกรณี รวมถึงรถของคุณเองที่เสียหายจากอุบัติเหตุ ไฟไหม้ น้ำท่วม และโจรกรรม ส่วนชั้น 2+ และ 3+ จะคุ้มครองเฉพาะกรณีชนกับยานพาหนะอื่นเท่านั้น เบี้ยจึงถูกกว่า</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-item__q" type="button">
+          <span class="num">02</span>
+          <span>ใช้บริการฟรีจริงไหม? มีค่าธรรมเนียมซ่อนเร้นไหม?</span>
+          <span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="faq-item__a">ฟรี 100% ทั้งการเช็คราคาและขอใบเสนอราคา ไม่มีค่าธรรมเนียมใดๆ เราเป็นโบรกเกอร์ที่ได้รับค่าตอบแทนจากบริษัทประกัน ไม่ใช่จากลูกค้า</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-item__q" type="button">
+          <span class="num">03</span>
+          <span>เครมประกันต้องทำอย่างไร?</span>
+          <span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="faq-item__a">แจ้งเครมผ่าน LINE ได้ทันที 24 ชั่วโมง ทีมงานจะประสานงานกับบริษัทประกันให้ทั้งหมด ไม่ต้องโทรเอง รถยกฟรีถึงที่ในกรณีอุบัติเหตุ</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-item__q" type="button">
+          <span class="num">04</span>
+          <span>ผ่อนชำระได้กี่งวด ฟรีดอกเบี้ยจริงไหม?</span>
+          <span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="faq-item__a">ผ่อน 0% นาน 10 เดือน ผ่านบัตรเครดิตของธนาคารชั้นนำ ไม่มีค่าธรรมเนียมแอบแฝง ราคาที่เห็นคือราคาที่จ่าย</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSURER STRIP -->
+<section class="insurers" id="insurers">
+  <div class="container">
+    <div class="insurers__head">
+      <h2>ประกันรถยนต์จากบริษัทชั้นนำ</h2>
+      <p>ทุกแบรนด์ที่คุณรู้จัก เปรียบเทียบในที่เดียว</p>
+    </div>
+    <div class="insurers__grid">
+      <% (insurers || []).forEach(function(ins) { %>
+      <div class="insurer-logo">
+        <% if (ins.logo_url) { %>
+        <img src="<%= ins.logo_url %>" alt="<%= ins.short_name || ins.name %>" loading="lazy" class="insurer-logo__img">
+        <% } %>
+        <div class="insurer-logo__name">
+          <b><%= ins.short_name || ins.name.substring(0, 8) %></b>
+          <%= ins.name %>
+        </div>
+      </div>
+      <% }) %>
     </div>
   </div>
 </section>

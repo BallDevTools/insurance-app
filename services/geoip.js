@@ -20,7 +20,7 @@ async function lookupIp(ip) {
 
   try {
     const res  = await fetch(
-      `http://ip-api.com/json/${ip}?fields=status,country,city,isp,mobile,proxy`,
+      `http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,asname,mobile,proxy,hosting`,
       { signal: ctrl.signal }
     )
     if (res.status === 429) {
@@ -33,11 +33,21 @@ async function lookupIp(ip) {
     if (data.status !== 'success') return null
 
     const result = {
-      country: data.country || null,
-      city:    data.city    || null,
-      isp:     data.isp     || null,
-      mobile:  data.mobile  ? 1 : 0,
-      proxy:   data.proxy   ? 1 : 0
+      country:     data.country     || null,
+      countryCode: data.countryCode || null,
+      region:      data.regionName  || null,
+      city:        data.city        || null,
+      zip:         data.zip         || null,
+      lat:         data.lat         || null,
+      lon:         data.lon         || null,
+      timezone:    data.timezone    || null,
+      isp:         data.isp         || null,
+      org:         data.org         || null,
+      as:          data.as          || null,
+      asname:      data.asname      || null,
+      mobile:      data.mobile      ? 1 : 0,
+      proxy:       data.proxy       ? 1 : 0,
+      hosting:     data.hosting     ? 1 : 0,
     }
     cache.set(ip, { data: result, ts: Date.now() })
     return result

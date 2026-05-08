@@ -396,13 +396,13 @@ fastify.post('/quote', {
         (token, source, utm_campaign, utm_medium, utm_content,
          brand, model, model_id, year,
          insurance_type, funnel_stage, name, phone, best_price, packages_json,
-         visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, query_params, affiliate_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'hot', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, ip_geo, query_params, affiliate_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'hot', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [resultToken, source, campaign, medium, content,
        brandName, modelName, modelId > 0 ? modelId : null, yearInt,
        insurance_type, cleanName, cleanPhone, bestPrice, JSON.stringify(packages),
        visitorId, clientIp(req), geoData?.country||null, geoData?.city||null, geoData?.isp||null,
-       geoData?.mobile||0, geoData?.proxy||0, queryParams, affiliateId]
+       geoData?.mobile||0, geoData?.proxy||0, geoData ? JSON.stringify(geoData) : null, queryParams, affiliateId]
     )
   }
 
@@ -533,11 +533,11 @@ fastify.post('/concierge', {
     `INSERT INTO leads
        (token, source, brand, model, year, license_plate, province,
         insurance_type, funnel_stage, lead_type, name, phone,
-        visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, query_params, affiliate_id)
-     VALUES (?, ?, 'ไม่ระบุ', 'ไม่ระบุ', ?, '', 'ไม่ระบุ', 'class1', 'hot', 'concierge', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, ip_geo, query_params, affiliate_id)
+     VALUES (?, ?, 'ไม่ระบุ', 'ไม่ระบุ', ?, '', 'ไม่ระบุ', 'class1', 'hot', 'concierge', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [token, utm.source || 'organic', new Date().getFullYear(), cleanName, ph,
      visitorId, clientIp(req), geoData?.country||null, geoData?.city||null, geoData?.isp||null,
-     geoData?.mobile||0, geoData?.proxy||0, queryParams, affiliateId]
+     geoData?.mobile||0, geoData?.proxy||0, geoData ? JSON.stringify(geoData) : null, queryParams, affiliateId]
   ).catch(() => {})
 
   const [[newLead]] = await db.query('SELECT id FROM leads WHERE token = ?', [token]).catch(() => [[null]])

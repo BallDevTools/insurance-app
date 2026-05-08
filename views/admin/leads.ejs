@@ -239,11 +239,14 @@ function renderLd(l) {
 
   let ip = ''
   if (l.ip_address) {
+    const geo = l.ip_geo ? (typeof l.ip_geo === 'string' ? JSON.parse(l.ip_geo) : l.ip_geo) : null
     ip = ldSection('ข้อมูลผู้เข้าชม',
       ldRow('IP', l.ip_address) +
       ldRow('ประเทศ', l.ip_country) +
       ldRow('เมือง', l.ip_city) +
       ldRow('ISP', l.ip_isp) +
+      ldRow('Org', geo?.org || null) +
+      ldRow('AS', geo?.asname || null) +
       ldRow('อุปกรณ์', l.ip_mobile ? '📱 มือถือ' : '💻 Desktop') +
       (l.ip_proxy ? '<div class="ld-proxy">⚠️ ตรวจพบ VPN/Proxy</div>' : '') +
       ldRow('Visitor ID', l.visitor_id ? l.visitor_id.substring(0, 8) + '…' : null)

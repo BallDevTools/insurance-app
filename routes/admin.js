@@ -262,7 +262,7 @@ module.exports = async function adminPlugin(fastify, opts) {
       `SELECT id, brand, model, year, province, insurance_type, funnel_stage, lead_type,
               source, utm_campaign, utm_medium, utm_content,
               name, phone, best_price, clicked_line, clicked_facebook, status, note,
-              visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy,
+              visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, ip_geo,
               query_params, created_at
        FROM leads WHERE id = ?`, [id]
     )

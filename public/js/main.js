@@ -236,6 +236,13 @@ if (carForm && submitBtn) {
     submitBtn.classList.add('btn-loading')
     submitBtn.disabled = true
   })
+
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) {
+      submitBtn.classList.remove('btn-loading')
+      submitBtn.disabled = false
+    }
+  })
 }
 
 // =============================================

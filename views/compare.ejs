@@ -8,6 +8,12 @@
   }
   const hasCar = !!(selected.brand_id && selected.model_id && selected.year)
   const hasResults = hasCar && (comparisons !== null || sameClassPackages !== null)
+  const _selBrand = brands.find(b => String(b.id) === String(selected.brand_id))
+  const _selBrandName = _selBrand ? _selBrand.name : ''
+  const _selModel = models && selected.model_id ? (models.find(m => String(m.id) === String(selected.model_id)) || null) : null
+  const _selModelName = _selModel ? _selModel.name : ''
+  const _insClassLabels = { '':'ทุกชั้น (เปรียบเทียบ)', class1:'ประกันชั้น 1', class2plus:'ประกันชั้น 2+', class3plus:'ประกันชั้น 3+' }
+  const _selInsClassLabel = _insClassLabels[selected.insurance_class || ''] || 'ทุกชั้น (เปรียบเทียบ)'
 %>
 
 <!-- SEARCH BAR -->
@@ -24,52 +30,88 @@
       <div class="cmp-form-bar__form">
         <div class="field">
           <label>ยี่ห้อรถ</label>
-          <div class="control">
-            <select id="car_brand_id" name="brand_id">
-              <option value="">ยี่ห้อรถ</option>
-              <% brands.forEach(b => { %>
-                <option value="<%= b.id %>" <%= String(selected.brand_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option>
-              <% }) %>
-            </select>
+          <div class="cs-wrap" id="cs-cmp-brand" data-init-id="<%= selected.brand_id || '' %>" data-init-name="<%= _selBrandName %>">
+            <div class="cs-trigger" tabindex="0">
+              <span class="cs-val<%= !_selBrandName ? ' cs-val--ph' : '' %>"><%= _selBrandName || 'ยี่ห้อรถ' %></span>
+              <svg class="cs-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="cs-drop">
+              <div class="cs-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input class="cs-search" type="text" placeholder="ค้นหายี่ห้อ..." autocomplete="off">
+              </div>
+              <ul class="cs-list">
+                <li class="cs-item cs-item--ph" data-value="">ยี่ห้อรถ</li>
+                <% brands.forEach(function(b) { %>
+                <li class="cs-item<%= String(selected.brand_id) === String(b.id) ? ' cs-item--active' : '' %>" data-value="<%= b.id %>" data-label="<%= b.name %>"><%= b.name %></li>
+                <% }) %>
+              </ul>
+            </div>
           </div>
+          <input type="hidden" id="cmp_brand_id" name="brand_id" value="<%= selected.brand_id || '' %>">
         </div>
 
         <div class="field">
           <label>รุ่นรถ</label>
-          <div class="control">
-            <select id="car_model_id" name="model_id" data-default-model-id="<%= selected.model_id || '' %>">
-              <option value="">รุ่นรถ</option>
-              <% if (models && models.length > 0) { %>
-                <% models.forEach(m => { %>
-                  <option value="<%= m.id %>" <%= String(selected.model_id) === String(m.id) ? 'selected' : '' %>><%= m.name %></option>
+          <div class="cs-wrap <%= !selected.brand_id ? 'cs-wrap--disabled' : '' %>" id="cs-cmp-model" data-init-id="<%= selected.model_id || '' %>">
+            <div class="cs-trigger" tabindex="0">
+              <span class="cs-val<%= !_selModelName ? ' cs-val--ph' : '' %>"><%= _selModelName || 'รุ่นรถ' %></span>
+              <svg class="cs-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="cs-drop">
+              <div class="cs-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input class="cs-search" type="text" placeholder="ค้นหารุ่นรถ..." autocomplete="off">
+              </div>
+              <ul class="cs-list">
+                <li class="cs-item cs-item--ph" data-value="">รุ่นรถ</li>
+                <% if (models && models.length > 0) { %>
+                <% models.forEach(function(m) { %>
+                <li class="cs-item<%= String(selected.model_id) === String(m.id) ? ' cs-item--active' : '' %>" data-value="<%= m.id %>" data-label="<%= m.name %>"><%= m.name %></li>
                 <% }) %>
-              <% } %>
-            </select>
+                <% } %>
+              </ul>
+            </div>
           </div>
+          <input type="hidden" id="cmp_model_id" name="model_id" value="<%= selected.model_id || '' %>">
         </div>
 
         <div class="field">
           <label>ปีรถ</label>
-          <div class="control">
-            <select name="year">
-              <option value="">ปีรถ</option>
-              <% years.forEach(y => { %>
-                <option value="<%= y %>" <%= String(selected.year) === String(y) ? 'selected' : '' %>><%= y %></option>
-              <% }) %>
-            </select>
+          <div class="cs-wrap" id="cs-cmp-year">
+            <div class="cs-trigger" tabindex="0">
+              <span class="cs-val<%= !selected.year ? ' cs-val--ph' : '' %>"><%= selected.year || 'ปีรถ' %></span>
+              <svg class="cs-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="cs-drop">
+              <ul class="cs-list">
+                <li class="cs-item cs-item--ph" data-value="">ปีรถ</li>
+                <% years.forEach(function(y) { %>
+                <li class="cs-item<%= String(selected.year) === String(y) ? ' cs-item--active' : '' %>" data-value="<%= y %>" data-label="<%= y %>"><%= y %></li>
+                <% }) %>
+              </ul>
+            </div>
           </div>
+          <input type="hidden" id="cmp_year" name="year" value="<%= selected.year || '' %>">
         </div>
 
         <div class="field">
           <label>ชั้นประกัน</label>
-          <div class="control">
-            <select name="insurance_class" id="insuranceClassSelect">
-              <option value="">ทุกชั้น (เปรียบเทียบ)</option>
-              <option value="class1"     <%= selected.insurance_class === 'class1'     ? 'selected' : '' %>>ประกันชั้น 1</option>
-              <option value="class2plus" <%= selected.insurance_class === 'class2plus' ? 'selected' : '' %>>ประกันชั้น 2+</option>
-              <option value="class3plus" <%= selected.insurance_class === 'class3plus' ? 'selected' : '' %>>ประกันชั้น 3+</option>
-            </select>
+          <div class="cs-wrap" id="cs-cmp-class">
+            <div class="cs-trigger" tabindex="0">
+              <span class="cs-val<%= !selected.insurance_class ? ' cs-val--ph' : '' %>"><%= _selInsClassLabel %></span>
+              <svg class="cs-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="cs-drop">
+              <ul class="cs-list">
+                <li class="cs-item cs-item--ph<%= !selected.insurance_class ? ' cs-item--active' : '' %>" data-value="" data-label="ทุกชั้น (เปรียบเทียบ)">ทุกชั้น (เปรียบเทียบ)</li>
+                <li class="cs-item<%= selected.insurance_class === 'class1'     ? ' cs-item--active' : '' %>" data-value="class1"     data-label="ประกันชั้น 1">ประกันชั้น 1</li>
+                <li class="cs-item<%= selected.insurance_class === 'class2plus' ? ' cs-item--active' : '' %>" data-value="class2plus" data-label="ประกันชั้น 2+">ประกันชั้น 2+</li>
+                <li class="cs-item<%= selected.insurance_class === 'class3plus' ? ' cs-item--active' : '' %>" data-value="class3plus" data-label="ประกันชั้น 3+">ประกันชั้น 3+</li>
+              </ul>
+            </div>
           </div>
+          <input type="hidden" id="cmp_insurance_class" name="insurance_class" value="<%= selected.insurance_class || '' %>">
         </div>
 
         <button type="submit" class="btn-search">
@@ -386,30 +428,6 @@ document.getElementById('sortSelect')?.addEventListener('change', function() {
   }.bind(this))
   cards.forEach(function(c) { list.appendChild(c) })
 })
-
-// Load models on brand change
-document.getElementById('car_brand_id')?.addEventListener('change', function() {
-  var brandId = this.value
-  var modelSelect = document.getElementById('car_model_id')
-  modelSelect.innerHTML = '<option value="">กำลังโหลด...</option>'
-  if (!brandId) { modelSelect.innerHTML = '<option value="">รุ่นรถ</option>'; return }
-  fetch('/api/models?brand_id=' + brandId)
-    .then(r => r.json())
-    .then(models => {
-      modelSelect.innerHTML = '<option value="">รุ่นรถ</option>'
-      models.forEach(m => {
-        var opt = document.createElement('option')
-        opt.value = m.id; opt.textContent = m.name
-        modelSelect.appendChild(opt)
-      })
-      var def = modelSelect.dataset.defaultModelId
-      if (def) modelSelect.value = def
-    })
-})
-;(function() {
-  var brandId = document.getElementById('car_brand_id')?.value
-  if (brandId) document.getElementById('car_brand_id').dispatchEvent(new Event('change'))
-})()
 
 // compare (Mode B only)
 var PKG_DATA = <%- JSON.stringify((sameClassPackages || []).map(function(p) {

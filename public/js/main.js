@@ -380,6 +380,43 @@ if (carForm && submitBtn) {
 })();
 
 // =============================================
+// Compare page — custom selects
+// =============================================
+;(function () {
+  const brandWrap = document.getElementById('cs-cmp-brand')
+  const modelWrap = document.getElementById('cs-cmp-model')
+  const yearWrap  = document.getElementById('cs-cmp-year')
+  const classWrap = document.getElementById('cs-cmp-class')
+  if (!brandWrap) return
+
+  const brandIn = document.getElementById('cmp_brand_id')
+  const modelIn = document.getElementById('cmp_model_id')
+  const yearIn  = document.getElementById('cmp_year')
+  const classIn = document.getElementById('cmp_insurance_class')
+
+  const csB = initCS(brandWrap)
+  const csM = initCS(modelWrap)
+  initCS(yearWrap)
+  initCS(classWrap)
+
+  brandWrap.addEventListener('cs:pick', async function (e) {
+    const brandId = e.detail.value
+    brandIn.value = brandId
+    if (!brandId) { csM.reset('รุ่นรถ'); csM.disable(); modelIn.value = ''; return }
+    csM.reset('กำลังโหลด...'); csM.disable(); modelIn.value = ''
+    try {
+      const res  = await fetch('/api/models?brand_id=' + brandId)
+      const data = await res.json()
+      csM.setItems(data, 'รุ่นรถ'); csM.enable()
+    } catch { csM.reset('โหลดไม่ได้'); csM.enable() }
+  })
+
+  modelWrap.addEventListener('cs:pick', e => { modelIn.value = e.detail.value })
+  yearWrap.addEventListener('cs:pick',  e => { yearIn.value  = e.detail.value })
+  classWrap.addEventListener('cs:pick', e => { classIn.value = e.detail.value })
+})()
+
+// =============================================
 // Format license plate input (auto uppercase)
 // =============================================
 const plateInput = document.getElementById('license_plate')

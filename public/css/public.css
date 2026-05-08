@@ -823,6 +823,7 @@ body.public-site .footer__socials a:hover { background: var(--cyan); color: var(
 .cmp-form-bar__form .field label { display: none; }
 .cmp-form-bar__form .control select,
 .cmp-form-bar__form .control input { height: 50px; }
+.cmp-form-bar__form .cs-wrap .cs-trigger { height: 50px; }
 .cmp-form-bar__form .btn-search {
   height: 50px; padding: 0 22px;
   background: linear-gradient(135deg, var(--turquoise), var(--cyan));

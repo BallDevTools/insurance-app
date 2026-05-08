@@ -21,6 +21,7 @@ const { sanitizeBody }    = require('./services/sanitize')
 const { notifyAdminNewLead } = require('./services/lineBot')
 const { startScraperScheduler } = require('./scraper/scheduler')
 const { lookupIp } = require('./services/geoip')
+const clientIp = req => req.headers['x-real-ip'] || (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip
 
 const PUB_LAYOUT = 'layout.ejs'
 const CLASS_MAP  = { class1: '1', class2plus: '2+', class3plus: '3+' }
@@ -344,7 +345,7 @@ fastify.post('/quote', {
 
   // visitor_id + IP tracking + query params + affiliate
   const visitorId   = req.cookies?.visitor_id || null
-  const geoData     = await lookupIp(req.ip).catch(() => null)
+  const geoData     = await lookupIp(clientIp(req)).catch(() => null)
   const queryParams = req.session?.queryParams ? JSON.stringify(req.session.queryParams) : null
   const affiliateId = await resolveAffiliate(req)
 
@@ -383,7 +384,7 @@ fastify.post('/quote', {
        cleanName, cleanPhone, bestPrice, JSON.stringify(packages),
        source, campaign, medium, content,
        visitorId,
-       req.ip, geoData?.country||null, geoData?.city||null, geoData?.isp||null,
+       clientIp(req), geoData?.country||null, geoData?.city||null, geoData?.isp||null,
        geoData?.mobile||0, geoData?.proxy||0,
        queryParams, affiliateId, resultToken]
     )
@@ -400,7 +401,7 @@ fastify.post('/quote', {
       [resultToken, source, campaign, medium, content,
        brandName, modelName, modelId > 0 ? modelId : null, yearInt,
        insurance_type, cleanName, cleanPhone, bestPrice, JSON.stringify(packages),
-       visitorId, req.ip, geoData?.country||null, geoData?.city||null, geoData?.isp||null,
+       visitorId, clientIp(req), geoData?.country||null, geoData?.city||null, geoData?.isp||null,
        geoData?.mobile||0, geoData?.proxy||0, queryParams, affiliateId]
     )
   }
@@ -524,7 +525,7 @@ fastify.post('/concierge', {
   const token      = crypto.randomBytes(16).toString('hex')
   const utm        = req.session?.utm || {}
   const visitorId   = req.cookies?.visitor_id || null
-  const geoData     = await lookupIp(req.ip).catch(() => null)
+  const geoData     = await lookupIp(clientIp(req)).catch(() => null)
   const queryParams = req.session?.queryParams ? JSON.stringify(req.session.queryParams) : null
   const affiliateId = await resolveAffiliate(req)
 
@@ -535,7 +536,7 @@ fastify.post('/concierge', {
         visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, query_params, affiliate_id)
      VALUES (?, ?, 'ไม่ระบุ', 'ไม่ระบุ', ?, '', 'ไม่ระบุ', 'class1', 'hot', 'concierge', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [token, utm.source || 'organic', new Date().getFullYear(), cleanName, ph,
-     visitorId, req.ip, geoData?.country||null, geoData?.city||null, geoData?.isp||null,
+     visitorId, clientIp(req), geoData?.country||null, geoData?.city||null, geoData?.isp||null,
      geoData?.mobile||0, geoData?.proxy||0, queryParams, affiliateId]
   ).catch(() => {})
 

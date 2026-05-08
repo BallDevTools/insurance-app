@@ -25,6 +25,15 @@ const ORDER = [
   'migrate_companies_and_pkg_fields.sql',
 ]
 
+// MySQL 8.0 ไม่รองรับ IF NOT EXISTS ใน ALTER TABLE ADD COLUMN/INDEX
+// แก้โดย strip clause แล้วจับ error 1060/1061 (duplicate col/index) แทน
+function mysqlCompat(stmt) {
+  return stmt
+    .replace(/ADD COLUMN IF NOT EXISTS\s+/gi, 'ADD COLUMN ')
+    .replace(/ADD INDEX IF NOT EXISTS\s+/gi, 'ADD INDEX ')
+    .replace(/ADD UNIQUE IF NOT EXISTS\s+/gi, 'ADD UNIQUE ')
+}
+
 async function runFile(file) {
   const filePath = path.join(MIGRATIONS_DIR, file)
   if (!fs.existsSync(filePath)) { console.log(`  SKIP (not found): ${file}`); return }
@@ -33,10 +42,11 @@ async function runFile(file) {
     .split(';')
     .map(s => s.replace(/--[^\n]*/g, '').trim())
     .filter(s => s.length > 0)
-  for (const stmt of stmts) {
+  for (const raw of stmts) {
+    const stmt = mysqlCompat(raw)
     await db.query(stmt).catch(e => {
-      if (/already exists|duplicate|1060|1061|1050/.test(e.message)) {
-        console.log(`    skip (exists): ${stmt.substring(0, 60)}`)
+      if (/already exists|duplicate|1060|1061|1050|ER_DUP_FIELDNAME|ER_DUP_KEYNAME|ER_TABLE_EXISTS/i.test(e.message + (e.code || ''))) {
+        console.log(`    skip (exists): ${stmt.substring(0, 70)}`)
       } else {
         throw e
       }

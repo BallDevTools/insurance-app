@@ -32,7 +32,7 @@
       </div>
       <div class="adm-form-group" id="affSelectRow" style="display:none">
         <label>เลือก Affiliate</label>
-        <select name="affiliate_id" required>
+        <select name="affiliate_id" id="affSelectInput">
           <option value="">-- เลือก --</option>
           <% (locals.affiliates||[]).forEach(a => { %>
             <option value="<%= a.id %>"><%= a.name %> (?aff=<%= a.slug %>)</option>
@@ -42,7 +42,11 @@
       <button type="submit" class="adm-btn adm-btn-primary adm-btn-full">เพิ่ม Admin</button>
       <script>
       function toggleAffSelect(v) {
-        document.getElementById('affSelectRow').style.display = v === 'affiliate' ? '' : 'none'
+        var show = v === 'affiliate'
+        var row = document.getElementById('affSelectRow')
+        var sel = document.getElementById('affSelectInput')
+        row.style.display = show ? '' : 'none'
+        sel.required = show
       }
       </script>
     </form>

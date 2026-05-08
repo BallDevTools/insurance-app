@@ -18,6 +18,7 @@ const ORDER = [
   'migrate_notifications.sql',
   'migrate_tracking.sql',
   'migrate_query_params.sql',
+  'migrate_admin_users.sql',
   'migrate_affiliate.sql',
   'migrate_settings_affiliate.sql',
   'migrate_commission.sql',

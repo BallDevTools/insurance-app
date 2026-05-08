@@ -166,7 +166,7 @@ module.exports = async function adminPlugin(fastify, opts) {
         ${req.session.admin.role === 'affiliate' ? `,
         SUM(CASE WHEN commission_amount IS NOT NULL AND commission_paid=0 THEN commission_amount ELSE 0 END) AS pending_commission,
         SUM(CASE WHEN commission_paid=1 THEN commission_amount ELSE 0 END) AS paid_commission` : ''}
-      FROM leads ${fWhere}
+      FROM leads l ${fWhere}
     `, fp).catch(() => [[{
       total_leads:0, today_leads:0, month_leads:0,
       total_line_clicks:0, total_fb_clicks:0, total_clicked:0,
@@ -175,24 +175,24 @@ module.exports = async function adminPlugin(fastify, opts) {
     }]])
 
     const [typeBreakdown] = await db.query(
-      `SELECT insurance_type, COUNT(*) AS cnt FROM leads ${fWhere} GROUP BY insurance_type ORDER BY cnt DESC`, fp
+      `SELECT insurance_type, COUNT(*) AS cnt FROM leads l ${fWhere} GROUP BY insurance_type ORDER BY cnt DESC`, fp
     ).catch(() => [[]])
 
     const [dailyStats] = await db.query(
-      `SELECT DATE(created_at) AS day, COUNT(*) AS cnt
-       FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) ${extra}
-       GROUP BY DATE(created_at) ORDER BY day ASC`, fp
+      `SELECT DATE(l.created_at) AS day, COUNT(*) AS cnt
+       FROM leads l WHERE l.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) ${extra}
+       GROUP BY DATE(l.created_at) ORDER BY day ASC`, fp
     ).catch(() => [[]])
 
     const [topBrands] = await db.query(
-      `SELECT COALESCE(NULLIF(brand,''), 'ไม่ระบุ') AS car_brand, COUNT(*) AS cnt
-       FROM leads ${fWhere} GROUP BY COALESCE(NULLIF(brand,''), 'ไม่ระบุ') ORDER BY cnt DESC LIMIT 5`, fp
+      `SELECT COALESCE(NULLIF(l.brand,''), 'ไม่ระบุ') AS car_brand, COUNT(*) AS cnt
+       FROM leads l ${fWhere} GROUP BY COALESCE(NULLIF(l.brand,''), 'ไม่ระบุ') ORDER BY cnt DESC LIMIT 5`, fp
     ).catch(() => [[]])
 
     const [recentLeads] = await db.query(
-      `SELECT id, token, brand, model, year, insurance_type, source,
-              name, phone, best_price, clicked_line, clicked_facebook, status, created_at
-       FROM leads ${fWhere} ORDER BY created_at DESC LIMIT 10`, fp
+      `SELECT l.id, l.token, l.brand, l.model, l.year, l.insurance_type, l.source,
+              l.name, l.phone, l.best_price, l.clicked_line, l.clicked_facebook, l.status, l.created_at
+       FROM leads l ${fWhere} ORDER BY l.created_at DESC LIMIT 10`, fp
     ).catch(() => [[]])
 
     let affSlug = null

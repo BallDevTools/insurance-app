@@ -263,4 +263,10 @@ function renderLd(l) {
 
   return car + customer + src + qp + ip + note + date
 }
+
+fetch('/admin/api/notifications/read', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ type: 'new_lead' })
+}).catch(() => {})
 </script>

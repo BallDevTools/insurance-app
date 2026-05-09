@@ -292,4 +292,11 @@ function escHtml(s) {
 
 // auto-refresh ทุก 10 วินาที
 setInterval(() => { if (currentUserId) refreshMessages() }, 10000)
+
+// mark LINE notifications as read เมื่อเปิดหน้านี้
+fetch('/admin/api/notifications/read', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ type: 'new_line_message' })
+}).catch(() => {})
 </script>

@@ -708,6 +708,36 @@ fastify.get('/compare-view', async (req, reply) => {
 })
 
 // =============================================
+// Error Pages
+// =============================================
+const ERROR_META = {
+  400: { icon: '⚠️',  title: 'คำขอไม่ถูกต้อง',          message: 'ข้อมูลที่ส่งมาไม่ถูกต้องหรือไม่ครบถ้วน กรุณาตรวจสอบแล้วลองใหม่', codeColor: '#f59e0b', codeColor2: '#d97706' },
+  401: { icon: '🔐',  title: 'กรุณาเข้าสู่ระบบ',          message: 'คุณต้องเข้าสู่ระบบก่อนจึงจะเข้าถึงหน้านี้ได้',                    codeColor: '#8b5cf6', codeColor2: '#6d28d9' },
+  403: { icon: '🚫',  title: 'ไม่มีสิทธิ์เข้าถึง',        message: 'คุณไม่ได้รับอนุญาตให้เข้าถึงหน้านี้',                             codeColor: '#ef4444', codeColor2: '#dc2626' },
+  404: { icon: '🔍',  title: 'ไม่พบหน้าที่ต้องการ',       message: 'URL ที่คุณพิมพ์อาจผิดพลาดหรือหน้านี้ถูกย้ายไปแล้ว',              codeColor: '#475569', codeColor2: '#1e293b' },
+  429: { icon: '⏳',  title: 'คำขอมากเกินไป',             message: 'คุณส่งคำขอถี่เกินไป กรุณารอสักครู่แล้วลองใหม่',                  codeColor: '#f97316', codeColor2: '#ea580c' },
+  500: { icon: '🛠️', title: 'เกิดข้อผิดพลาดภายในระบบ',   message: 'ระบบมีปัญหาชั่วคราว ทีมงานได้รับแจ้งแล้ว กรุณาลองใหม่อีกครั้ง', codeColor: '#64748b', codeColor2: '#475569' },
+  503: { icon: '🔧',  title: 'ระบบปิดให้บริการชั่วคราว',  message: 'เรากำลังปรับปรุงระบบ กรุณากลับมาใหม่ในอีกสักครู่',               codeColor: '#64748b', codeColor2: '#475569' },
+}
+
+function renderError(reply, code, req) {
+  const meta = ERROR_META[code] || { icon: '❌', title: 'เกิดข้อผิดพลาด', message: 'กรุณาลองใหม่อีกครั้ง', codeColor: '#64748b', codeColor2: '#475569' }
+  return reply.code(code).view('error.ejs', {
+    title: meta.title,
+    ...meta,
+    code,
+    reqUrl: req?.url || ''
+  }, { layout: PUB_LAYOUT }).catch(() => reply.code(code).send({ error: meta.title }))
+}
+
+// =============================================
+// 404 Handler
+// =============================================
+fastify.setNotFoundHandler((req, reply) => {
+  renderError(reply, 404, req)
+})
+
+// =============================================
 // Error Handler
 // =============================================
 fastify.setErrorHandler(async (error, req, reply) => {
@@ -716,13 +746,8 @@ fastify.setErrorHandler(async (error, req, reply) => {
     const Sentry = require('@sentry/node')
     Sentry.captureException(error, { extra: { url: req.url, method: req.method } })
   }
-  if (error.statusCode === 429) {
-    return reply.code(429).view('error.ejs',
-      { title: 'Too Many Requests', message: error.message, code: 429 },
-      { layout: PUB_LAYOUT }
-    ).catch(() => reply.code(429).send({ error: error.message }))
-  }
-  reply.code(error.statusCode || 500).send({ error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' })
+  const code = error.statusCode || 500
+  renderError(reply, code, req)
 })
 
 // =============================================

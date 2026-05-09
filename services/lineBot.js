@@ -7,19 +7,38 @@ const LINE_REPLY_URL = 'https://api.line.me/v2/bot/message/reply'
 const LINE_PUSH_URL  = 'https://api.line.me/v2/bot/message/push'
 const LINE_PROFILE_URL = (userId) => `https://api.line.me/v2/bot/profile/${userId}`
 
-function getToken() {
-  return process.env.LINE_CHANNEL_ACCESS_TOKEN || ''
+// Credential cache — อ่านจาก app_settings DB ก่อน, fallback ไป .env
+let _cred = { secret: '', token: '', ts: 0 }
+const CRED_TTL = 5 * 60 * 1000
+
+async function getCredentials() {
+  if (Date.now() - _cred.ts < CRED_TTL && _cred.secret) return _cred
+  const db = require('../db')
+  const [rows] = await db.query(
+    "SELECT `key`, `value` FROM app_settings WHERE `key` IN ('line_channel_secret','line_channel_access_token') AND affiliate_id = 0"
+  ).catch(() => [[]])
+  const map = {}
+  rows.forEach(r => { map[r.key] = r.value })
+  _cred = {
+    secret: map.line_channel_secret || process.env.LINE_CHANNEL_SECRET || '',
+    token:  map.line_channel_access_token || process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+    ts: Date.now()
+  }
+  return _cred
 }
 
+function invalidateCredCache() { _cred.ts = 0 }
+
 // ตรวจ signature ของ LINE webhook
-function validateSignature(rawBody, signature) {
-  const secret = process.env.LINE_CHANNEL_SECRET || ''
+async function validateSignature(rawBody, signature) {
+  const { secret } = await getCredentials()
   const hash = crypto.createHmac('SHA256', secret).update(rawBody).digest('base64')
   return hash === signature
 }
 
 // ส่ง HTTP request แบบ Promise
-function lineRequest(url, body) {
+async function lineRequest(url, body) {
+  const { token } = await getCredentials()
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body)
     const urlObj = new URL(url)
@@ -30,7 +49,7 @@ function lineRequest(url, body) {
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(data),
-        'Authorization': `Bearer ${getToken()}`
+        'Authorization': `Bearer ${token}`
       }
     }
     const req = https.request(options, (res) => {
@@ -45,14 +64,15 @@ function lineRequest(url, body) {
 }
 
 // ดึงโปรไฟล์ user จาก LINE
-function getUserProfile(userId) {
+async function getUserProfile(userId) {
+  const { token } = await getCredentials()
   return new Promise((resolve, reject) => {
     const urlObj = new URL(LINE_PROFILE_URL(userId))
     const options = {
       hostname: urlObj.hostname,
       path: urlObj.pathname,
       method: 'GET',
-      headers: { 'Authorization': `Bearer ${getToken()}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     }
     const req = https.request(options, (res) => {
       let result = ''
@@ -353,4 +373,4 @@ async function notifyAdminNewLead(lead, adminUserId) {
   return pushMessage(id, [newLeadBubble(lead)]).catch(() => {})
 }
 
-module.exports = { validateSignature, replyMessage, pushMessage, getUserProfile, textMsg, quoteBubble, newLeadBubble, welcomeBubble, notifyAdminNewLead }
+module.exports = { validateSignature, replyMessage, pushMessage, getUserProfile, textMsg, quoteBubble, newLeadBubble, welcomeBubble, notifyAdminNewLead, invalidateCredCache }

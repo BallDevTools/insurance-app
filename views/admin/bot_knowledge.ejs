@@ -1,0 +1,284 @@
+<div class="adm-page-header">
+  <h1 class="adm-page-title">🧠 สอนบอท</h1>
+  <div class="adm-page-actions">
+    <button class="adm-btn adm-btn-primary" onclick="openAddModal()">+ เพิ่ม Q&amp;A</button>
+  </div>
+</div>
+
+<div class="bot-layout">
+  <!-- ====== LEFT: Knowledge Base ====== -->
+  <div class="bot-kb-panel">
+    <div class="bot-panel-header">
+      <span>📚 Knowledge Base</span>
+      <span class="adm-badge adm-badge-info"><%= knowledge.length %> รายการ</span>
+    </div>
+
+    <% if (knowledge.length === 0) { %>
+    <div class="bot-empty">ยังไม่มี Q&amp;A — กด "+ เพิ่ม Q&amp;A" ได้เลยครับ</div>
+    <% } %>
+
+    <% const cats = [...new Set(knowledge.map(k => k.category))] %>
+    <% cats.forEach(cat => { %>
+      <div class="bot-cat-label"><%= cat %></div>
+      <% knowledge.filter(k => k.category === cat).forEach(k => { %>
+      <div class="bot-kb-card <%= k.is_active ? '' : 'inactive' %>" id="kb-<%= k.id %>">
+        <div class="bot-kb-card-top">
+          <div class="bot-kb-q"><%= k.question_sample %></div>
+          <div class="bot-kb-actions">
+            <span class="bot-match-badge"><%= k.match_count %> ครั้ง</span>
+            <button class="adm-btn adm-btn-xs <%= k.is_active ? 'adm-btn-warning' : 'adm-btn-success' %>"
+              onclick="toggleKb(<%= k.id %>, this)">
+              <%= k.is_active ? 'ปิด' : 'เปิด' %>
+            </button>
+            <button class="adm-btn adm-btn-xs adm-btn-secondary" onclick="openKbEdit(<%= k.id %>)">แก้</button>
+            <button class="adm-btn adm-btn-xs adm-btn-danger" onclick="deleteKb(<%= k.id %>)">ลบ</button>
+          </div>
+        </div>
+        <div class="bot-kb-keywords">🔑 <%= k.keywords %></div>
+        <div class="bot-kb-answer"><%= k.answer.substring(0, 80) %><%= k.answer.length > 80 ? '...' : '' %></div>
+      </div>
+      <% }) %>
+    <% }) %>
+  </div>
+
+  <!-- ====== RIGHT: Unknown Queue ====== -->
+  <div class="bot-unknown-panel">
+    <div class="bot-panel-header">
+      <span>❓ คำถามที่บอทยังไม่รู้</span>
+      <span class="adm-badge adm-badge-warning"><%= unknowns.length %> รายการ</span>
+    </div>
+
+    <% if (unknowns.length === 0) { %>
+    <div class="bot-empty">ยังไม่มีคำถาม — รอให้ลูกค้าคุยกับบอทก่อนครับ 🤖</div>
+    <% } %>
+
+    <% unknowns.forEach(u => { %>
+    <div class="bot-unknown-card" id="unk-<%= u.id %>">
+      <div class="bot-unknown-top">
+        <div class="bot-unknown-msg">"<%= u.message.substring(0, 100) %>"</div>
+        <span class="bot-freq-badge"><%= u.frequency %>x</span>
+      </div>
+      <div class="bot-unknown-actions">
+        <button class="adm-btn adm-btn-xs adm-btn-primary"
+          onclick="openTeachModal(<%= u.id %>, `<%= u.message.replace(/`/g,'').substring(0,200) %>`)">
+          🧠 สอนบอท
+        </button>
+        <button class="adm-btn adm-btn-xs adm-btn-secondary"
+          onclick="ignoreUnknown(<%= u.id %>, this)">
+          ไม่สนใจ
+        </button>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+</div>
+
+<!-- ====== MODAL: Add/Edit Knowledge ====== -->
+<div class="bot-modal-overlay" id="kbModal" style="display:none" onclick="closeModal(event)">
+  <div class="bot-modal">
+    <div class="bot-modal-title" id="modalTitle">เพิ่ม Q&amp;A</div>
+    <form id="kbForm" method="POST" action="/admin/bot-knowledge">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <input type="hidden" name="_method" id="formMethod" value="">
+
+      <div class="adm-form-group">
+        <label>หมวดหมู่</label>
+        <select name="category" class="adm-input">
+          <option>ทั่วไป</option>
+          <option>ราคา</option>
+          <option>ความคุ้มครอง</option>
+          <option>การเคลม</option>
+          <option>อื่นๆ</option>
+        </select>
+      </div>
+      <div class="adm-form-group">
+        <label>ตัวอย่างคำถาม</label>
+        <input type="text" name="question_sample" class="adm-input" id="fQuestion" placeholder="เช่น ประกันชั้น 1 คุ้มครองอะไรบ้าง" required>
+      </div>
+      <div class="adm-form-group">
+        <label>Keywords <small style="color:var(--gray-400)">(คั่นด้วย comma)</small></label>
+        <input type="text" name="keywords" class="adm-input" id="fKeywords" placeholder="เช่น ชั้น1,class1,ชั้นหนึ่ง" required>
+      </div>
+      <div class="adm-form-group">
+        <label>คำตอบ</label>
+        <textarea name="answer" class="adm-input" id="fAnswer" rows="5" placeholder="พิมพ์คำตอบที่บอทจะส่งหาลูกค้า..." required></textarea>
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button type="button" class="adm-btn adm-btn-secondary" onclick="closeKbModal()">ยกเลิก</button>
+        <button type="submit" class="adm-btn adm-btn-primary">บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ====== MODAL: Teach from Unknown ====== -->
+<div class="bot-modal-overlay" id="teachModal" style="display:none" onclick="closeTeachEvent(event)">
+  <div class="bot-modal">
+    <div class="bot-modal-title">🧠 สอนบอท</div>
+    <div class="bot-teach-question" id="teachQuestion"></div>
+    <form id="teachForm" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="adm-form-group">
+        <label>หมวดหมู่</label>
+        <select name="category" class="adm-input">
+          <option>ทั่วไป</option><option>ราคา</option>
+          <option>ความคุ้มครอง</option><option>การเคลม</option><option>อื่นๆ</option>
+        </select>
+      </div>
+      <div class="adm-form-group">
+        <label>Keywords <small style="color:var(--gray-400)">(คั่นด้วย comma)</small></label>
+        <input type="text" name="keywords" class="adm-input" id="tKeywords" required>
+      </div>
+      <div class="adm-form-group">
+        <label>ตัวอย่างคำถาม</label>
+        <input type="text" name="question_sample" class="adm-input" id="tQuestion">
+      </div>
+      <div class="adm-form-group">
+        <label>คำตอบ</label>
+        <textarea name="answer" class="adm-input" id="tAnswer" rows="5" required></textarea>
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button type="button" class="adm-btn adm-btn-secondary" onclick="closeTeachModal()">ยกเลิก</button>
+        <button type="submit" class="adm-btn adm-btn-primary">สอนบอท</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ====== Hidden delete forms ====== -->
+<div id="deleteForms"></div>
+
+<style>
+.bot-layout { display:grid; grid-template-columns:1fr 380px; gap:1rem; align-items:start; }
+.bot-kb-panel, .bot-unknown-panel {
+  background:#fff; border-radius:var(--radius); border:1px solid var(--gray-100);
+  box-shadow:var(--shadow-sm); overflow:hidden;
+}
+.bot-panel-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.75rem 1rem; border-bottom:1px solid var(--gray-100);
+  font-weight:600; font-size:.9rem; color:var(--gray-700); background:var(--gray-50);
+}
+.bot-cat-label {
+  padding:.4rem 1rem; font-size:.75rem; font-weight:700; color:var(--gray-400);
+  text-transform:uppercase; letter-spacing:.05em; background:var(--gray-50);
+  border-bottom:1px solid var(--gray-100);
+}
+.bot-kb-card {
+  padding:.85rem 1rem; border-bottom:1px solid var(--gray-100); transition:background .15s;
+}
+.bot-kb-card:hover { background:var(--gray-50) }
+.bot-kb-card.inactive { opacity:.45 }
+.bot-kb-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; margin-bottom:.4rem; }
+.bot-kb-q { font-weight:600; font-size:.88rem; color:var(--gray-800); flex:1; }
+.bot-kb-actions { display:flex; gap:.25rem; align-items:center; flex-shrink:0; }
+.bot-match-badge { font-size:.72rem; padding:.15rem .5rem; background:#eff6ff; color:#1e40af; border-radius:10px; }
+.bot-kb-keywords { font-size:.78rem; color:var(--adm-accent); margin-bottom:.3rem; }
+.bot-kb-answer { font-size:.8rem; color:var(--gray-500); white-space:pre-line; }
+.bot-unknown-card {
+  padding:.85rem 1rem; border-bottom:1px solid var(--gray-100); transition:background .15s;
+}
+.bot-unknown-card:hover { background:var(--gray-50) }
+.bot-unknown-top { display:flex; align-items:flex-start; gap:.5rem; margin-bottom:.5rem; }
+.bot-unknown-msg { font-size:.88rem; color:var(--gray-700); flex:1; line-height:1.5; font-style:italic; }
+.bot-freq-badge { flex-shrink:0; font-size:.72rem; padding:.15rem .5rem; background:#fef3c7; color:#92400e; border-radius:10px; font-weight:700; }
+.bot-unknown-actions { display:flex; gap:.5rem; }
+.bot-empty { padding:2rem; text-align:center; color:var(--text-muted); font-size:.9rem; }
+/* Modal */
+.bot-modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000;
+  display:flex; align-items:center; justify-content:center; padding:1rem;
+}
+.bot-modal {
+  background:#fff; border-radius:var(--radius); padding:1.5rem;
+  width:100%; max-width:520px; max-height:90vh; overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.2);
+}
+.bot-modal-title { font-size:1.1rem; font-weight:700; color:var(--gray-800); margin-bottom:1rem; }
+.bot-teach-question {
+  background:#eff6ff; border-left:3px solid var(--adm-accent);
+  padding:.6rem .9rem; margin-bottom:1rem; border-radius:4px;
+  font-size:.88rem; color:var(--gray-700); font-style:italic;
+}
+@media(max-width:900px) { .bot-layout { grid-template-columns:1fr } }
+</style>
+
+<script>
+const csrf = '<%= csrf %>'
+const kbData = {}
+<% knowledge.forEach(k => { %>
+kbData[<%= k.id %>] = <%- JSON.stringify({
+  category: k.category,
+  question: k.question_sample,
+  keywords: k.keywords,
+  answer: k.answer
+}).replace(/<\/script>/gi, '<\\/script>') %>;
+<% }) %>
+
+// ====== Knowledge Base CRUD ======
+function openAddModal() {
+  document.getElementById('modalTitle').textContent = 'เพิ่ม Q&A'
+  document.getElementById('kbForm').action = '/admin/bot-knowledge'
+  document.getElementById('fQuestion').value = ''
+  document.getElementById('fKeywords').value = ''
+  document.getElementById('fAnswer').value = ''
+  document.querySelector('#kbForm select[name=category]').value = 'ทั่วไป'
+  document.getElementById('kbModal').style.display = 'flex'
+}
+
+function openKbEdit(id) {
+  const d = kbData[id]
+  if (!d) return
+  document.getElementById('modalTitle').textContent = 'แก้ไข Q&A'
+  document.getElementById('kbForm').action = '/admin/bot-knowledge/' + id + '/update'
+  document.querySelector('#kbForm select[name=category]').value = d.category
+  document.getElementById('fQuestion').value = d.question
+  document.getElementById('fKeywords').value = d.keywords
+  document.getElementById('fAnswer').value = d.answer
+  document.getElementById('kbModal').style.display = 'flex'
+}
+
+function closeModal(e) {
+  if (e.target.classList.contains('bot-modal-overlay')) closeKbModal()
+}
+function closeKbModal() {
+  document.getElementById('kbModal').style.display = 'none'
+}
+
+async function toggleKb(id, btn) {
+  const res = await fetch('/admin/bot-knowledge/' + id + '/toggle', { method:'POST' })
+  if (res.ok) location.reload()
+}
+
+function deleteKb(id) {
+  if (!confirm('ลบ Q&A นี้?')) return
+  const f = document.createElement('form')
+  f.method = 'POST'; f.action = '/admin/bot-knowledge/' + id + '/delete'
+  f.innerHTML = `<input name="_csrf" value="${csrf}">`
+  document.getElementById('deleteForms').appendChild(f)
+  f.submit()
+}
+
+// ====== Unknown Queue ======
+function openTeachModal(id, msg) {
+  document.getElementById('teachQuestion').textContent = msg
+  document.getElementById('teachForm').action = '/admin/bot-unknowns/' + id + '/teach'
+  document.getElementById('tKeywords').value = ''
+  document.getElementById('tQuestion').value = msg.substring(0, 100)
+  document.getElementById('tAnswer').value = ''
+  document.getElementById('teachModal').style.display = 'flex'
+}
+function closeTeachModal() {
+  document.getElementById('teachModal').style.display = 'none'
+}
+function closeTeachEvent(e) {
+  if (e.target.classList.contains('bot-modal-overlay')) closeTeachModal()
+}
+
+async function ignoreUnknown(id, btn) {
+  const card = document.getElementById('unk-' + id)
+  await fetch('/admin/bot-unknowns/' + id + '/ignore', { method:'POST' })
+  card.style.opacity = '0'; card.style.transition = 'opacity .3s'
+  setTimeout(() => card.remove(), 300)
+}
+</script>

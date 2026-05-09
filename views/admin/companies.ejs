@@ -1,0 +1,111 @@
+<div class="adm-page-header">
+  <h1 class="adm-page-title">🏢 บริษัทประกัน</h1>
+  <div class="adm-page-actions">
+    <span style="font-size:.85rem;color:var(--gray-400)"><%= companies.length %> บริษัท</span>
+  </div>
+</div>
+
+<div class="adm-card" style="padding:0;overflow:hidden">
+  <table class="adm-table">
+    <thead>
+      <tr>
+        <th style="width:48px"></th>
+        <th>ชื่อบริษัท</th>
+        <th style="width:120px">Short Name</th>
+        <th>Logo URL</th>
+        <th style="width:80px">สถานะ</th>
+        <th style="width:80px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% companies.forEach(c => { %>
+      <tr id="row-<%= c.id %>">
+        <td>
+          <div class="co-logo-thumb">
+            <% if (c.logo_url) { %>
+              <img src="<%= c.logo_url %>" alt="" onerror="this.style.display='none'">
+            <% } else { %>
+              <span class="co-logo-initial"><%= (c.short_name || c.name).charAt(0) %></span>
+            <% } %>
+          </div>
+        </td>
+        <td>
+          <div style="font-weight:600;font-size:.88rem;color:var(--gray-800)"><%= c.name %></div>
+        </td>
+        <td>
+          <input type="text" class="adm-input adm-input-sm" id="sn-<%= c.id %>"
+            value="<%= c.short_name || '' %>" placeholder="TIP, BKI..." autocomplete="off">
+        </td>
+        <td>
+          <input type="text" class="adm-input adm-input-sm" id="lu-<%= c.id %>"
+            value="<%= c.logo_url || '' %>" placeholder="https://..."
+            oninput="previewLogo(<%= c.id %>)" autocomplete="off">
+        </td>
+        <td>
+          <select class="adm-input adm-input-sm" id="ac-<%= c.id %>">
+            <option value="1" <%= c.is_active ? 'selected' : '' %>>เปิด</option>
+            <option value="0" <%= !c.is_active ? 'selected' : '' %>>ปิด</option>
+          </select>
+        </td>
+        <td>
+          <button class="adm-btn adm-btn-primary adm-btn-sm" onclick="saveCompany(<%= c.id %>)">บันทึก</button>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<style>
+.co-logo-thumb {
+  width:40px; height:40px; border-radius:8px; overflow:hidden;
+  background:var(--gray-100); display:flex; align-items:center; justify-content:center;
+}
+.co-logo-thumb img { width:100%; height:100%; object-fit:contain; }
+.co-logo-initial { font-weight:700; font-size:.85rem; color:var(--gray-500); }
+.adm-input-sm { padding:.3rem .5rem; font-size:.82rem; width:100%; }
+</style>
+
+<script>
+const csrf = '<%= csrf %>'
+
+function previewLogo(id) {
+  const url = document.getElementById('lu-' + id).value
+  const thumb = document.querySelector('#row-' + id + ' .co-logo-thumb')
+  if (url) {
+    thumb.innerHTML = `<img src="${url}" alt="" onerror="this.style.display='none'">`
+  } else {
+    const row = document.getElementById('row-' + id)
+    const name = row.querySelector('td:nth-child(2) div').textContent.trim()
+    thumb.innerHTML = `<span class="co-logo-initial">${name.charAt(0)}</span>`
+  }
+}
+
+async function saveCompany(id) {
+  const short_name = document.getElementById('sn-' + id).value
+  const logo_url   = document.getElementById('lu-' + id).value
+  const is_active  = document.getElementById('ac-' + id).value
+  const btn = document.querySelector(`#row-${id} button`)
+  btn.textContent = '...'
+  btn.disabled = true
+
+  const res = await fetch('/admin/companies/' + id, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ _csrf: csrf, short_name, logo_url, is_active })
+  })
+
+  if (res.ok) {
+    btn.textContent = '✓'
+    btn.className = 'adm-btn adm-btn-success adm-btn-sm'
+    setTimeout(() => {
+      btn.textContent = 'บันทึก'
+      btn.className = 'adm-btn adm-btn-primary adm-btn-sm'
+      btn.disabled = false
+    }, 1500)
+  } else {
+    btn.textContent = 'Error'
+    btn.disabled = false
+  }
+}
+</script>

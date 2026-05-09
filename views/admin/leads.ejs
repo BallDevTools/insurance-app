@@ -3,7 +3,7 @@
 <div style="display:flex;gap:8px;margin-bottom:16px">
   <% const tabs = [['all','ทั้งหมด'],['direct','Direct'],['affiliate','Affiliate']] %>
   <% tabs.forEach(([v,label]) => { %>
-    <a href="/admin/leads?view=<%= v %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>"
+    <a href="/admin/leads?view=<%= v %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>&utm_campaign=<%= filters.utm_campaign %>"
        style="padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;
               background:<%= tabView===v ? '#7c3aed' : '#f1f5f9' %>;
               color:<%= tabView===v ? '#fff' : '#64748b' %>">
@@ -37,7 +37,9 @@
       <option value="line_ads"     <%= filters.source==='line_ads'?'selected':'' %>>LINE Ads</option>
       <option value="facebook_ads" <%= filters.source==='facebook_ads'?'selected':'' %>>Facebook Ads</option>
       <option value="google"       <%= filters.source==='google'?'selected':'' %>>Google</option>
+      <option value="other"        <%= filters.source==='other'?'selected':'' %>>Other</option>
     </select>
+    <input type="text" name="utm_campaign" value="<%= filters.utm_campaign %>" placeholder="🏷️ Campaign">
     <button type="submit" class="adm-btn adm-btn-primary">ค้นหา</button>
     <a href="/admin/leads?view=<%= tabView %>" class="adm-btn adm-btn-ghost">ล้าง</a>
   </form>
@@ -144,7 +146,7 @@
   <% if (totalPages > 1) { %>
     <div class="adm-pagination">
       <% for (let i=1; i<=totalPages; i++) { %>
-        <a href="?view=<%= tabView %>&page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>"
+        <a href="?view=<%= tabView %>&page=<%= i %>&q=<%= filters.q %>&status=<%= filters.status %>&source=<%= filters.source %>&funnel_stage=<%= filters.funnel_stage %>&utm_campaign=<%= filters.utm_campaign %>"
            class="adm-page-btn <%= page===i?'active':'' %>"><%= i %></a>
       <% } %>
     </div>

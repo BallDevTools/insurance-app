@@ -1,4 +1,5 @@
 <% const isAffiliate = admin.role === 'affiliate' %>
+<% const isSuperAdmin = admin.role === 'superadmin' %>
 <% if (saved) { %><div class="adm-alert adm-alert-success">✅ บันทึกการตั้งค่าเรียบร้อย</div><% } %>
 
 <% if (isAffiliate && locals.affSlug) { %>
@@ -92,7 +93,8 @@ function copyAffSettings() {
     </div>
   </div>
 
-  <!-- GTM / GA4 Code — ทั้ง superadmin และ affiliate -->
+  <!-- GTM / GA4 Code — superadmin และ affiliate เท่านั้น -->
+  <% if (isSuperAdmin || isAffiliate) { %>
   <div class="adm-card">
     <div class="adm-card-title">📊 Google Tag Manager / GA4</div>
     <div class="adm-settings-note">วาง GTM snippet หรือ GA4 gtag ตรงนี้ได้เลย ใส่หรือไม่ใส่ก็ได้</div>
@@ -105,6 +107,7 @@ function copyAffSettings() {
       <textarea name="gtm_body_code" rows="3" placeholder="<!-- Google Tag Manager (noscript) -->&#10;<noscript>...</noscript>" style="width:100%;font-family:monospace;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:8px;resize:vertical"><%= settings.gtm_body_code||'' %></textarea>
     </div>
   </div>
+  <% } %>
 
   <% if (!isAffiliate) { %>
 
@@ -117,12 +120,23 @@ function copyAffSettings() {
     </div>
     <div class="adm-settings-row">
       <label>LINE Admin User ID</label>
-      <input type="text" name="line_admin_user_id" value="<%= settings.line_admin_user_id||'' %>" placeholder="Uxxxxxxxxxx...">
-      <span class="adm-settings-hint" style="font-size:11px">รับแจ้งเตือน lead ใหม่</span>
+      <div style="flex:1;display:flex;gap:8px;align-items:center">
+        <input type="text" name="line_admin_user_id" value="<%= settings.line_admin_user_id||'' %>" placeholder="Uxxxxxxxxxx..." style="flex:1">
+        <button type="button" onclick="document.getElementById('lineIdHelp').style.display=document.getElementById('lineIdHelp').style.display==='none'?'block':'none'"
+          style="width:22px;height:22px;border-radius:50%;border:2px solid #f59e0b;background:#fef3c7;color:#92400e;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;line-height:1">!</button>
+      </div>
+    </div>
+    <div id="lineIdHelp" style="display:none;margin:0 0 12px 0;background:#fef9ee;border:1px solid #fcd34d;border-radius:8px;padding:12px 14px;font-size:12px;color:#78350f;line-height:1.7">
+      <strong>วิธีหา User ID ของคุณ:</strong><br>
+      1. เปิด <strong>developers.line.biz</strong> แล้ว Login<br>
+      2. เลือก Channel (Messaging API ของคุณ)<br>
+      3. คลิกแท็บ <strong>Basic settings</strong><br>
+      4. เลื่อนหา <strong>"Your user ID"</strong> → คัดลอกค่า <code style="background:#fff;padding:1px 4px;border-radius:3px">Ue2ca7f...</code> มาวางที่นี่
     </div>
   </div>
 
   <!-- Commission Settings — superadmin only -->
+  <% if (isSuperAdmin) { %>
   <div class="adm-card">
     <div class="adm-card-title">🤝 Commission Mode (Affiliate)</div>
     <div class="adm-settings-note">เลือกว่า commission คิดจากอะไร — ใช้กับ affiliate ทุกคน</div>
@@ -150,6 +164,33 @@ function copyAffSettings() {
       Premium: commission = เบี้ย × rate% affiliate<br>
       Broker Fee: commission = (เบี้ย × broker_fee%) × rate% affiliate
     </div>
+  </div>
+
+  <% } %>
+
+  <!-- LINE Messaging API — superadmin only -->
+  <div class="adm-card">
+    <div class="adm-card-title">🤖 LINE Messaging API</div>
+    <div class="adm-settings-note">Credentials สำหรับ LINE Bot (webhook) — เปลี่ยนที่นี่แทนการแก้ .env บน server</div>
+    <div class="adm-settings-row">
+      <label>Channel Secret</label>
+      <div style="flex:1;display:flex;gap:8px;align-items:center">
+        <input type="password" name="line_channel_secret" id="inp_secret"
+          value="<%= settings.line_channel_secret||'' %>"
+          placeholder="จาก LINE Developers Console" autocomplete="off" style="flex:1">
+        <button type="button" onclick="togglePw('inp_secret',this)" style="padding:.3rem .6rem;font-size:.8rem;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;cursor:pointer">👁</button>
+      </div>
+    </div>
+    <div class="adm-settings-row">
+      <label>Channel Access Token</label>
+      <div style="flex:1;display:flex;gap:8px;align-items:center">
+        <input type="password" name="line_channel_access_token" id="inp_token"
+          value="<%= settings.line_channel_access_token||'' %>"
+          placeholder="จาก LINE Developers Console" autocomplete="off" style="flex:1">
+        <button type="button" onclick="togglePw('inp_token',this)" style="padding:.3rem .6rem;font-size:.8rem;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;cursor:pointer">👁</button>
+      </div>
+    </div>
+    <div class="adm-settings-note" style="color:#f59e0b">⚠️ ถ้าใส่ค่าที่นี่จะใช้แทน .env ทันที (cache 5 นาที)</div>
   </div>
 
   <!-- Theme Colors — superadmin only -->
@@ -192,6 +233,12 @@ function copyAffSettings() {
 </form>
 <script>
 ;(function() {
+  window.togglePw = function(id, btn) {
+    const inp = document.getElementById(id)
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈' }
+    else { inp.type = 'password'; btn.textContent = '👁' }
+  }
+
   const brokerRow = document.getElementById('brokerFeeRow')
   if (brokerRow) {
     document.querySelectorAll('input[name="commission_base"]').forEach(r => {

@@ -5,6 +5,7 @@ const db = require('../db')
 const bcrypt = require('bcryptjs')
 const { INSURANCE_TYPES } = require('../calculator')
 const audit = require('../services/auditLog')
+const { invalidateCredCache } = require('../services/lineBot')
 
 function genCsrf(req) {
   if (!req.session.csrfToken) {
@@ -217,7 +218,7 @@ module.exports = async function adminPlugin(fastify, opts) {
     const page   = Math.max(1, parseInt(req.query.page) || 1)
     const limit  = 20
     const offset = (page - 1) * limit
-    const { q = '', status = '', source = '', funnel_stage = '', aff_id = '', view: viewParam = 'all' } = req.query
+    const { q = '', status = '', source = '', funnel_stage = '', utm_campaign = '', aff_id = '', view: viewParam = 'all' } = req.query
     const tabView = ['all','direct','affiliate'].includes(viewParam) ? viewParam : 'all'
 
     const { extra, p: fp } = leadFilter(req.session.admin)
@@ -226,6 +227,7 @@ module.exports = async function adminPlugin(fastify, opts) {
     if (status)       { where += ' AND l.status=?'; p.push(status) }
     if (source)       { where += ' AND l.source=?'; p.push(source) }
     if (funnel_stage) { where += ' AND l.funnel_stage=?'; p.push(funnel_stage) }
+    if (utm_campaign) { where += ' AND l.utm_campaign LIKE ?'; p.push(`%${utm_campaign}%`) }
     if (tabView === 'direct')    { where += ' AND l.affiliate_id IS NULL' }
     if (tabView === 'affiliate') { where += ' AND l.affiliate_id IS NOT NULL' }
     if (aff_id)       { where += ' AND l.affiliate_id=?'; p.push(parseInt(aff_id)) }
@@ -251,7 +253,7 @@ module.exports = async function adminPlugin(fastify, opts) {
       title: 'Leads ลูกค้า', activePage: 'leads', admin: req.session.admin,
       leads, total, page, totalPages: Math.ceil(total / limit),
       tabView,
-      filters: { q, status, source, funnel_stage, aff_id }
+      filters: { q, status, source, funnel_stage, utm_campaign, aff_id }
     })
   })
 
@@ -347,7 +349,8 @@ module.exports = async function adminPlugin(fastify, opts) {
 
     const superKeys = ['site_phone','site_email','line_oa_url','facebook_url','line_admin_user_id',
                        'theme_sidebar_bg','theme_accent','theme_content_bg',
-                       'commission_base','broker_fee_rate','gtm_head_code','gtm_body_code']
+                       'commission_base','broker_fee_rate','gtm_head_code','gtm_body_code',
+                       'line_channel_secret','line_channel_access_token']
     const affKeys   = ['line_oa_url','facebook_url','site_phone','gtm_head_code','gtm_body_code']
     const keys = isAffiliate ? affKeys : superKeys
 
@@ -359,6 +362,7 @@ module.exports = async function adminPlugin(fastify, opts) {
         )
       }
     }
+    if (!isAffiliate) invalidateCredCache()
     return reply.redirect('/admin/settings?saved=1')
   })
 
@@ -512,6 +516,107 @@ module.exports = async function adminPlugin(fastify, opts) {
       [state, state === 'handoff' ? new Date() : null, userId]
     ).catch(() => {})
     return reply.send({ ok: true })
+  })
+
+  // ============================================================
+  // COMPANIES (logo + short_name)
+  // ============================================================
+  fastify.get('/companies', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
+    const [companies] = await db.query(
+      'SELECT * FROM companies ORDER BY name ASC'
+    ).catch(() => [[]])
+    return av(reply, 'companies.ejs', {
+      title: 'บริษัทประกัน', activePage: 'companies', admin: req.session.admin,
+      companies, csrf: genCsrf(req)
+    })
+  })
+
+  fastify.post('/companies/:id', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
+    if (!checkCsrf(req)) return reply.status(403).send('forbidden')
+    const { id } = req.params
+    const { short_name, logo_url, is_active } = req.body || {}
+    await db.query(
+      'UPDATE companies SET short_name=?, logo_url=?, is_active=? WHERE id=?',
+      [short_name || null, logo_url || null, is_active === '1' ? 1 : 0, id]
+    ).catch(() => {})
+    return reply.send({ ok: true })
+  })
+
+  // ============================================================
+  // BOT KNOWLEDGE BASE
+  // ============================================================
+  fastify.get('/bot-knowledge', async (req, reply) => {
+    const [knowledge] = await db.query(
+      'SELECT * FROM bot_knowledge ORDER BY category, id DESC'
+    ).catch(() => [[]])
+    const [unknowns] = await db.query(
+      'SELECT * FROM bot_unknowns WHERE status="pending" ORDER BY frequency DESC LIMIT 20'
+    ).catch(() => [[]])
+    return av(reply, 'bot_knowledge.ejs', {
+      title: 'สอนบอท', activePage: 'bot', admin: req.session.admin,
+      knowledge, unknowns, csrf: genCsrf(req)
+    })
+  })
+
+  fastify.post('/bot-knowledge', async (req, reply) => {
+    if (!checkCsrf(req)) return reply.status(403).send('forbidden')
+    const { category, question_sample, keywords, answer } = req.body || {}
+    if (!question_sample || !keywords || !answer) return reply.redirect('/admin/bot-knowledge')
+    await db.query(
+      'INSERT INTO bot_knowledge (category, question_sample, keywords, answer) VALUES (?,?,?,?)',
+      [category || 'ทั่วไป', question_sample, keywords, answer]
+    ).catch(() => {})
+    return reply.redirect('/admin/bot-knowledge')
+  })
+
+  fastify.post('/bot-knowledge/:id/update', async (req, reply) => {
+    if (!checkCsrf(req)) return reply.status(403).send('forbidden')
+    const { id } = req.params
+    const { category, question_sample, keywords, answer } = req.body || {}
+    await db.query(
+      'UPDATE bot_knowledge SET category=?, question_sample=?, keywords=?, answer=? WHERE id=?',
+      [category || 'ทั่วไป', question_sample, keywords, answer, id]
+    ).catch(() => {})
+    return reply.redirect('/admin/bot-knowledge')
+  })
+
+  fastify.post('/bot-knowledge/:id/toggle', async (req, reply) => {
+    const { id } = req.params
+    await db.query('UPDATE bot_knowledge SET is_active = 1 - is_active WHERE id=?', [id]).catch(() => {})
+    return reply.send({ ok: true })
+  })
+
+  fastify.post('/bot-knowledge/:id/delete', async (req, reply) => {
+    if (!checkCsrf(req)) return reply.status(403).send('forbidden')
+    const { id } = req.params
+    await db.query('DELETE FROM bot_knowledge WHERE id=?', [id]).catch(() => {})
+    return reply.redirect('/admin/bot-knowledge')
+  })
+
+  fastify.post('/bot-unknowns/:id/ignore', async (req, reply) => {
+    const { id } = req.params
+    await db.query('UPDATE bot_unknowns SET status="ignored" WHERE id=?', [id]).catch(() => {})
+    return reply.send({ ok: true })
+  })
+
+  fastify.post('/bot-unknowns/:id/teach', async (req, reply) => {
+    if (!checkCsrf(req)) return reply.status(403).send('forbidden')
+    const { id } = req.params
+    const { category, question_sample, keywords, answer } = req.body || {}
+    if (!keywords || !answer) return reply.redirect('/admin/bot-knowledge')
+    const [result] = await db.query(
+      'INSERT INTO bot_knowledge (category, question_sample, keywords, answer) VALUES (?,?,?,?)',
+      [category || 'ทั่วไป', question_sample, keywords, answer]
+    ).catch(() => [{ insertId: null }])
+    if (result.insertId) {
+      await db.query(
+        'UPDATE bot_unknowns SET status="taught", taught_knowledge_id=? WHERE id=?',
+        [result.insertId, id]
+      ).catch(() => {})
+    }
+    return reply.redirect('/admin/bot-knowledge')
   })
 
   // ============================================================

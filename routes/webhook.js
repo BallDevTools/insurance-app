@@ -30,7 +30,7 @@ module.exports = async function webhookPlugin(fastify, opts) {
   fastify.post('/webhook/line', async (req, reply) => {
     // ตรวจ signature
     const signature = req.headers['x-line-signature']
-    if (!validateSignature(req.rawBody, signature)) {
+    if (!await validateSignature(req.rawBody, signature)) {
       return reply.status(403).send({ error: 'Invalid signature' })
     }
 
@@ -115,6 +115,15 @@ async function handleEvent(event) {
     return
   }
 
+  // Knowledge Base — ตรวจก่อน intent detection
+  const kbAnswer = await searchKnowledge(text)
+  if (kbAnswer) {
+    await replyMessage(replyToken, [textMsg(kbAnswer)])
+    await saveMessage(userId, 'out', kbAnswer, 'bot')
+    await resetAskCount(userId)
+    return
+  }
+
   // ตรวจ intent
   const { intent, params } = detectIntent(text)
   params.text = text  // ส่ง text ดิบไปด้วยสำหรับ dbResponder
@@ -150,12 +159,13 @@ async function handleEvent(event) {
     return
   }
 
-  // Fallback → AI
+  // Fallback → AI + log unknown
   const context = await getConversationHistory(userId)
   const aiText = await getAIResponse(text, context)
 
   await replyMessage(replyToken, [textMsg(aiText)])
   await saveMessage(userId, 'out', aiText, 'ai')
+  logUnknown(text)  // fire-and-forget
 
   // นับจำนวนครั้งที่ใช้ AI
   const newCount = (session.ask_count || 0) + 1
@@ -208,6 +218,33 @@ async function saveMessage(userId, direction, message, sentBy = 'bot', lineMessa
     'INSERT INTO line_messages (line_user_id, direction, message, sent_by, line_message_id) VALUES (?, ?, ?, ?, ?)',
     [userId, direction, message, sentBy, lineMessageId]
   ).catch(() => {})
+}
+
+async function searchKnowledge(text) {
+  const [entries] = await db.query(
+    'SELECT * FROM bot_knowledge WHERE is_active = 1'
+  ).catch(() => [[]])
+  const textLower = text.toLowerCase()
+  for (const entry of entries) {
+    const keywords = entry.keywords.split(',').map(k => k.trim().toLowerCase())
+    if (keywords.some(k => k && textLower.includes(k))) {
+      db.query('UPDATE bot_knowledge SET match_count = match_count+1 WHERE id=?', [entry.id]).catch(() => {})
+      return entry.answer
+    }
+  }
+  return null
+}
+
+async function logUnknown(message) {
+  const msg = message.substring(0, 500)
+  const [existing] = await db.query(
+    'SELECT id FROM bot_unknowns WHERE message = ? AND status = "pending" LIMIT 1', [msg]
+  ).catch(() => [[]])
+  if (existing.length > 0) {
+    db.query('UPDATE bot_unknowns SET frequency = frequency+1, last_seen_at = NOW() WHERE id=?', [existing[0].id]).catch(() => {})
+  } else {
+    db.query('INSERT INTO bot_unknowns (message) VALUES (?)', [msg]).catch(() => {})
+  }
 }
 
 async function getConversationHistory(userId) {

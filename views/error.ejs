@@ -1,13 +1,87 @@
-﻿<section class="front-error-shell">
-  <div class="container">
-    <div class="front-error-card">
-      <span class="front-error-icon"><%= code === 429 ? '429' : '!' %></span>
-      <h1><%= title %></h1>
-      <p><%= message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' %></p>
-      <div class="front-error-actions">
-        <a href="/" class="front-primary-btn">กลับหน้าแรก</a>
-        <a href="/compare" class="front-secondary-btn">ไปหน้าเปรียบเทียบ</a>
-      </div>
+<style>
+.err-shell {
+  min-height: 72vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+.err-card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.08);
+  padding: 52px 48px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+.err-code {
+  font-size: 96px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -4px;
+  background: linear-gradient(135deg, <%= codeColor %> 0%, <%= codeColor2 %> 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+.err-emoji { font-size: 48px; margin-bottom: 12px; display: block; }
+.err-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 10px;
+}
+.err-msg {
+  font-size: .92rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+.err-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.err-btn-primary {
+  background: #0f172a;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: .9rem;
+  text-decoration: none;
+  transition: background .15s;
+}
+.err-btn-primary:hover { background: #1e293b; }
+.err-btn-primary, .err-btn-primary:visited { color: #fff !important; text-decoration: none; }
+.err-btn-secondary {
+  background: #f1f5f9;
+  color: #475569 !important;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: .9rem;
+  text-decoration: none;
+  transition: background .15s;
+}
+.err-btn-secondary:hover { background: #e2e8f0; color: #475569 !important; }
+.err-divider { border: none; border-top: 1px solid #f1f5f9; margin: 28px 0; }
+.err-hint { font-size: .78rem; color: #94a3b8 !important; }
+</style>
+
+<div class="err-shell">
+  <div class="err-card">
+    <span class="err-emoji"><%= icon %></span>
+    <div class="err-code"><%= code %></div>
+    <div class="err-title"><%= title %></div>
+    <p class="err-msg"><%= message %></p>
+    <div class="err-actions">
+      <a href="/" class="err-btn-primary">กลับหน้าแรก</a>
+      <% if (typeof backUrl !== 'undefined' && backUrl) { %>
+      <a href="<%= backUrl %>" class="err-btn-secondary">ย้อนกลับ</a>
+      <% } else { %>
+      <a href="javascript:history.back()" class="err-btn-secondary">ย้อนกลับ</a>
+      <% } %>
     </div>
+    <hr class="err-divider">
+    <div class="err-hint">รหัสข้อผิดพลาด: <%= code %> · <% if(typeof reqUrl !== 'undefined'){%><%= reqUrl %><% } %></div>
   </div>
-</section>
+</div>

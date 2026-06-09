@@ -3,6 +3,7 @@
 const crypto = require('crypto')
 const db = require('../db')
 const bcrypt = require('bcryptjs')
+const sse = require('../services/sse')
 const { INSURANCE_TYPES } = require('../calculator')
 const audit = require('../services/auditLog')
 const { invalidateCredCache } = require('../services/lineBot')
@@ -474,6 +475,20 @@ module.exports = async function adminPlugin(fastify, opts) {
     })
   })
 
+  // GET SSE stream สำหรับ real-time chat
+  fastify.get('/line/sse', (req, reply) => {
+    const { userId } = req.query
+    if (!userId) return reply.code(400).send()
+    reply.raw.setHeader('Content-Type', 'text/event-stream')
+    reply.raw.setHeader('Cache-Control', 'no-cache')
+    reply.raw.setHeader('Connection', 'keep-alive')
+    reply.raw.flushHeaders()
+    reply.raw.write('data: {"type":"connected"}\n\n')
+    sse.add(userId, reply.raw)
+    req.raw.on('close', () => sse.remove(userId, reply.raw))
+    reply.hijack()
+  })
+
   // GET messages for a user
   fastify.get('/line/messages', async (req, reply) => {
     const { userId } = req.query
@@ -494,15 +509,19 @@ module.exports = async function adminPlugin(fastify, opts) {
     await pushMessage(userId, [textMsg(message)])
 
     const adminName = req.session.admin?.username || 'admin'
+    const sentBy = `admin:${adminName}`
+    const now = new Date()
     await db.query(
       'INSERT INTO line_messages (line_user_id, direction, message, sent_by) VALUES (?, "out", ?, ?)',
-      [userId, message, `admin:${adminName}`]
+      [userId, message, sentBy]
     ).catch(() => {})
 
     await db.query(
       'UPDATE line_sessions SET last_message = ?, updated_at = NOW() WHERE line_user_id = ?',
       [message, userId]
     ).catch(() => {})
+
+    sse.broadcast(userId, { type: 'message', direction: 'out', message, sent_by: sentBy, created_at: now })
 
     return reply.send({ ok: true })
   })

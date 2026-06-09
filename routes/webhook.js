@@ -214,10 +214,12 @@ async function resetAskCount(userId) {
 }
 
 async function saveMessage(userId, direction, message, sentBy = 'bot', lineMessageId = null) {
+  const sse = require('../services/sse')
   await db.query(
     'INSERT INTO line_messages (line_user_id, direction, message, sent_by, line_message_id) VALUES (?, ?, ?, ?, ?)',
     [userId, direction, message, sentBy, lineMessageId]
   ).catch(() => {})
+  sse.broadcast(userId, { type: 'message', direction, message, sent_by: sentBy, created_at: new Date() })
 }
 
 async function searchKnowledge(text) {

@@ -219,6 +219,7 @@ async function loadChat(userId, name, state, pic) {
   }
 
   await refreshMessages()
+  connectSSE(userId)
 }
 
 async function refreshMessages() {
@@ -226,15 +227,33 @@ async function refreshMessages() {
   const res = await fetch(`/admin/line/messages?userId=${currentUserId}`)
   const msgs = await res.json()
   const container = document.getElementById('chatMessages')
-  container.innerHTML = msgs.map(m => `
-    <div class="msg-row ${m.direction}">
-      <div>
-        <div class="msg-bubble">${escHtml(m.message)}</div>
-        <div class="msg-meta">${m.sent_by} · ${new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
-      </div>
-    </div>
-  `).join('')
+  container.innerHTML = msgs.map(m => renderMsg(m)).join('')
   container.scrollTop = container.scrollHeight
+}
+
+function renderMsg(m) {
+  return `<div class="msg-row ${m.direction}">
+    <div>
+      <div class="msg-bubble">${escHtml(m.message)}</div>
+      <div class="msg-meta">${m.sent_by} · ${new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+    </div>
+  </div>`
+}
+
+function appendMsg(m) {
+  const container = document.getElementById('chatMessages')
+  container.insertAdjacentHTML('beforeend', renderMsg(m))
+  container.scrollTop = container.scrollHeight
+}
+
+let currentEs = null
+function connectSSE(userId) {
+  if (currentEs) currentEs.close()
+  currentEs = new EventSource(`/admin/line/sse?userId=${encodeURIComponent(userId)}`)
+  currentEs.onmessage = (e) => {
+    const data = JSON.parse(e.data)
+    if (data.type === 'message') appendMsg(data)
+  }
 }
 
 async function sendMessage() {
@@ -290,8 +309,7 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
 }
 
-// auto-refresh ทุก 10 วินาที
-setInterval(() => { if (currentUserId) refreshMessages() }, 10000)
+// real-time ผ่าน SSE — ไม่ต้อง polling แล้ว
 
 // mark LINE notifications as read เมื่อเปิดหน้านี้
 fetch('/admin/api/notifications/read', {

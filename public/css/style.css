@@ -1749,16 +1749,13 @@ body.public-site .hotline-number {
 }
 
 body.public-site .hero {
-  background: transparent;
+  background: #effef3;
   color: var(--front-text);
   padding: 4rem 0 1.5rem;
 }
 
 body.public-site .hero-bg {
-  background:
-    linear-gradient(135deg, rgba(255,255,255,.95), rgba(247,244,238,.9)),
-    radial-gradient(circle at top right, rgba(214,168,95,.12), transparent 30%),
-    radial-gradient(circle at bottom left, rgba(21,60,60,.08), transparent 24%);
+  background: #effef3;
 }
 
 body.public-site .hero .container {

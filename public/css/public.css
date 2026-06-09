@@ -507,11 +507,10 @@ body.public-site .footer__socials a:hover { background: var(--teal); color: #fff
   position: fixed; right: 22px; bottom: 22px; z-index: 60;
   background: linear-gradient(135deg, #06C755, #04a447);
   color: #fff;
-  border-radius: 999px;
-  padding: 12px 20px 12px 14px;
-  display: flex; align-items: center; gap: 10px;
+  border-radius: 50%;
+  width: 56px; height: 56px;
+  display: flex; align-items: center; justify-content: center;
   box-shadow: 0 14px 30px -10px rgba(6,199,85,0.55);
-  font-weight: 700; font-size: 14px;
   transition: transform .15s, box-shadow .2s;
   cursor: pointer;
 }
@@ -520,6 +519,7 @@ body.public-site .footer__socials a:hover { background: var(--teal); color: #fff
   width: 32px; height: 32px; border-radius: 50%;
   background: #fff; color: #06C755; display: grid; place-items: center; font-weight: 900;
 }
+.line-floating-text { display: none; }
 @media (max-width: 760px) {
   .line-floating { display: none; }
 }

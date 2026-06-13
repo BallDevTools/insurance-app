@@ -3,7 +3,7 @@
   /* Original navy/teal: #213A58 / #0C6478 / #15919B / #09D1C7 / #46DFB1 */
   --navy: #1b4332;
   --navy-2: #152d24;
-  --teal-deep: #2d6a4f;
+  --teal-deep: #357a55;
   --teal: #40916c;
   --cyan: #52b788;
   --turquoise: #74c69d;
@@ -75,8 +75,8 @@ a { color: inherit; text-decoration: none; }
   flex-shrink: 0;
 }
 .nav__cta:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(65, 145, 108, 0.35); }
-.nav__line-btn { display: flex; align-items: center; flex-shrink: 0; }
-.nav__line-btn img { display: block; border-radius: 10px; overflow: hidden; }
+.nav__line-btn { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #06C755, #04a447); box-shadow: 0 4px 12px rgba(6,199,85,0.35); transition: transform .15s, box-shadow .15s; }
+.nav__line-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(6,199,85,0.45); }
 .nav__burger { display: none; width: 40px; height: 40px; border-radius: 8px; background: rgba(0,0,0,0.06); align-items: center; justify-content: center; }
 .nav__burger span { display: block; width: 18px; height: 2px; background: var(--navy); position: relative; }
 .nav__burger span::before, .nav__burger span::after { content: ""; position: absolute; left: 0; right: 0; height: 2px; background: var(--navy); }
@@ -84,8 +84,10 @@ a { color: inherit; text-decoration: none; }
 .nav__burger span::after { top: 6px; }
 @media (max-width: 880px) {
   .nav__links, .nav__phone { display: none; }
-  .nav__burger { display: flex; }
+  .nav__burger { display: flex; order: -1; flex-shrink: 0; }
   .nav__cta { padding: 9px 14px; font-size: 13px; }
+  .nav__inner { gap: 0; justify-content: space-between; }
+  .nav__logo { flex: 1; justify-content: center; }
 }
 
 /* Mobile nav drawer */
@@ -523,7 +525,6 @@ body.public-site .footer__socials a:hover { background: var(--teal); color: #fff
 }
 .line-floating-text { display: none; }
 @media (max-width: 760px) {
-  .line-floating { display: none; }
 }
 
 /* ---------- Result page ---------- */
@@ -796,7 +797,6 @@ body.public-site .footer__socials a:hover { background: var(--teal); color: #fff
 @media (max-width: 980px) {
   .mobile-cta { display: flex; }
   .result-body, .cmp-body { padding-bottom: 110px; }
-  .line-floating { display: none; }
 }
 
 /* ---------- Compare page ---------- */

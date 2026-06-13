@@ -6,7 +6,8 @@ const pool = mysql.createPool({
   password: process.env.DB_PASS || '',
   database: process.env.DB_NAME || 'insurance_db',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 20,
+  queueLimit: 100,
   charset: 'utf8mb4'
 })
 

@@ -23,6 +23,16 @@ const { startScraperScheduler } = require('./scraper/scheduler')
 const { lookupIp } = require('./services/geoip')
 const clientIp = req => req.headers['x-real-ip'] || (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip
 
+const _cache = new Map()
+function getCached(key, ttlMs, fn) {
+  const hit = _cache.get(key)
+  if (hit && Date.now() < hit.exp) return Promise.resolve(hit.data)
+  return Promise.resolve(fn()).then(data => {
+    _cache.set(key, { data, exp: Date.now() + ttlMs })
+    return data
+  })
+}
+
 const PUB_LAYOUT = 'layout.ejs'
 const CLASS_MAP  = { class1: '1', class2plus: '2+', class3plus: '3+' }
 
@@ -36,19 +46,25 @@ async function resolveAffiliate(req) {
 }
 
 async function getPublicSettings(affiliateId = 0) {
-  const [global] = await db.query(
-    'SELECT `key`, `value` FROM app_settings WHERE affiliate_id = 0'
-  ).catch(() => [[]])
-  const s = {}
-  global.forEach(r => { s[r.key] = r.value })
-  if (affiliateId) {
-    const [aff] = await db.query(
-      'SELECT `key`, `value` FROM app_settings WHERE affiliate_id = ?', [affiliateId]
+  return getCached(`pub_${affiliateId}`, 2 * 60 * 1000, async () => {
+    const [global] = await db.query(
+      'SELECT `key`, `value` FROM app_settings WHERE affiliate_id = 0'
     ).catch(() => [[]])
-    aff.forEach(r => { s[r.key] = r.value })
-  }
-  return s
+    const s = {}
+    global.forEach(r => { s[r.key] = r.value })
+    if (affiliateId) {
+      const [aff] = await db.query(
+        'SELECT `key`, `value` FROM app_settings WHERE affiliate_id = ?', [affiliateId]
+      ).catch(() => [[]])
+      aff.forEach(r => { s[r.key] = r.value })
+    }
+    return s
+  })
 }
+
+const getBrands    = () => getCached('brands',    10 * 60 * 1000, async () => { const [r] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name'); return r })
+const getCompanies = () => getCached('companies', 10 * 60 * 1000, async () => { const [r] = await db.query('SELECT id, name, short_name, logo_url FROM companies WHERE is_active = 1 ORDER BY name').catch(() => [[]]); return r })
+const getProvinces = () => getCached('provinces', 10 * 60 * 1000, async () => { const [r] = await db.query('SELECT name FROM provinces ORDER BY name'); return r })
 
 // =============================================
 // Plugins
@@ -164,10 +180,7 @@ fastify.get('/', async (req, reply) => {
     })
   }
 
-  const [brands] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
-  const [insurers] = await db.query(
-    'SELECT id, name, short_name, logo_url FROM companies WHERE is_active = 1 ORDER BY name'
-  ).catch(() => [[]])
+  const [brands, insurers] = await Promise.all([getBrands(), getCompanies()])
   const currentYear = new Date().getFullYear()
   const years = []
   for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
@@ -290,10 +303,7 @@ fastify.post('/quote', {
     errors.insurance_type = 'กรุณาเลือกประเภทประกัน'
 
   if (Object.keys(errors).length > 0) {
-    const [brands] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
-    const [insurers] = await db.query(
-      'SELECT id, name, short_name, logo_url FROM companies WHERE is_active = 1 ORDER BY name'
-    ).catch(() => [[]])
+    const [brands, insurers] = await Promise.all([getBrands(), getCompanies()])
     const years = []
     for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
     const csrfToken = genCsrf(req)
@@ -485,10 +495,8 @@ fastify.get('/click/line', async (req, reply) => {
       [token]
     ).catch(() => {})
   }
-  const [[row]] = await db.query(
-    "SELECT value FROM app_settings WHERE `key`='line_oa_url'"
-  ).catch(() => [[null]])
-  return reply.redirect(row?.value || '/')
+  const pub = await getPublicSettings(0)
+  return reply.redirect(pub.line_oa_url || '/')
 })
 
 // =============================================
@@ -502,10 +510,8 @@ fastify.get('/click/facebook', async (req, reply) => {
       [token]
     ).catch(() => {})
   }
-  const [[row]] = await db.query(
-    "SELECT value FROM app_settings WHERE `key`='facebook_url'"
-  ).catch(() => [[null]])
-  return reply.redirect(row?.value || '/')
+  const pub = await getPublicSettings(0)
+  return reply.redirect(pub.facebook_url || '/')
 })
 
 // =============================================
@@ -557,8 +563,7 @@ fastify.post('/concierge', {
 // =============================================
 fastify.get('/compare', async (req, reply) => {
   const { brand_id, model_id, year, province, insurance_class } = req.query
-  const [brands]    = await db.query('SELECT id, name FROM scraped_brands ORDER BY name')
-  const [provinces] = await db.query('SELECT name FROM provinces ORDER BY name')
+  const [brands, provinces] = await Promise.all([getBrands(), getProvinces()])
   const currentYear = new Date().getFullYear()
   const years = []
   for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
@@ -684,7 +689,7 @@ fastify.get('/compare-view', async (req, reply) => {
     if (modelRow) carInfo = { ...modelRow, year: firstPkg.car_year, insurance_class: firstPkg.insurance_class }
   }
 
-  const [brands] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name').catch(() => [[]])
+  const brands = await getBrands()
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 21 }, (_, i) => currentYear - i)
 

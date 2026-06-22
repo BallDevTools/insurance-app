@@ -74,9 +74,10 @@ function initCS(wrap) {
     const qq = q.toLowerCase().trim()
     let visible = 0
     list.querySelectorAll('.cs-item:not(.cs-item--ph)').forEach(li => {
+      const catHidden = li.dataset.catHidden === '1'
       const match = !qq || li.textContent.toLowerCase().includes(qq)
-      li.hidden = !match
-      if (match) visible++
+      li.hidden = catHidden || !match
+      if (!catHidden && match) visible++
     })
     let empty = list.querySelector('.cs-item--empty')
     if (!visible && qq) {
@@ -145,7 +146,8 @@ function initCS(wrap) {
     try {
       const res    = await fetch(`/api/models?brand_id=${brandId}`)
       const models = await res.json()
-      csM.setItems(models, 'เลือกรุ่นรถ')
+      const toShow = window.__catFilter ? models.filter(m => window.__catFilter(m.name)) : models
+      csM.setItems(toShow.length ? toShow : models, 'เลือกรุ่นรถ')
       csM.enable()
       const initId = modelWrap.dataset.initId
       if (initId) csM.selectById(initId)

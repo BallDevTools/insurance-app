@@ -33,6 +33,16 @@
         </div>
       </div>
 
+      <!-- Category chips -->
+      <div class="cat-row" id="catRow">
+        <button class="filter-chip is-active" data-cat="all"    type="button">ทั้งหมด</button>
+        <button class="filter-chip"           data-cat="ev"     type="button">⚡ EV</button>
+        <button class="filter-chip"           data-cat="eco"    type="button">🌿 Eco Car</button>
+        <button class="filter-chip"           data-cat="suv"    type="button">🚙 SUV</button>
+        <button class="filter-chip"           data-cat="pickup" type="button">🛻 กระบะ</button>
+        <button class="filter-chip"           data-cat="mpv"    type="button">👨‍👩‍👧 MPV</button>
+      </div>
+
       <form action="/quote" method="POST" id="carForm" novalidate>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="utm_source" value="<%= utm.source || '' %>">
@@ -225,6 +235,42 @@
   </div>
 </section>
 
+<!-- POPULAR CARS -->
+<% if (popularCars && popularCars.length > 0) { %>
+<section class="pop">
+  <div class="container">
+    <div class="pop__head">
+      <span class="how__eyebrow">รถขายดี</span>
+      <h2 class="pop__title">เลือกรถยอดนิยม — ดูราคาได้เลย</h2>
+    </div>
+    <div class="pop__track-wrap">
+      <button class="pop__arrow pop__arrow--prev" id="popPrev" type="button" aria-label="ก่อนหน้า">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <div class="pop__track" id="popTrack">
+        <% var ctmap = {'1':'class1','2+':'class2plus','3+':'class3plus'} %>
+        <% popularCars.forEach(function(car) { %>
+        <a href="/quick?model_id=<%= car.model_id %>&year=<%= car.year %>&type=<%= ctmap[car.insurance_class] || 'class1' %>"
+           class="pop__card">
+          <span class="pop__ribbon pop__ribbon--<%= car.insurance_class.replace('+','p') %>">ชั้น <%= car.insurance_class %></span>
+          <div class="pop__card-brand"><%= car.brand_name %></div>
+          <div class="pop__card-model"><%= car.model_name %></div>
+          <div class="pop__card-year">ปี <%= car.year %></div>
+          <div class="pop__card-price"><span class="pop__card-from">เริ่ม</span> ฿<%= Number(Math.round(car.min_price)).toLocaleString('th-TH') %></div>
+          <div class="pop__card-cta">ดูราคาเลย
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+        <% }) %>
+      </div>
+      <button class="pop__arrow pop__arrow--next" id="popNext" type="button" aria-label="ถัดไป">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+  </div>
+</section>
+<% } %>
+
 <!-- HOW IT WORKS -->
 <section class="how" id="how">
   <div class="container">
@@ -261,6 +307,123 @@
     </div>
   </div>
 </section>
+
+<script>
+;(function(){
+  var track = document.getElementById('popTrack')
+  if (!track) return
+  var W = 172 + 12
+  var timer
+
+  function next() {
+    var maxScroll = track.scrollWidth - track.clientWidth
+    if (track.scrollLeft >= maxScroll - 4) {
+      track.scrollTo({ left: 0, behavior: 'smooth' })
+    } else {
+      track.scrollBy({ left: W * 3, behavior: 'smooth' })
+    }
+  }
+
+  function startAuto() { timer = setInterval(next, 3000) }
+  function stopAuto()  { clearInterval(timer) }
+
+  startAuto()
+
+  // หยุดเมื่อ user แตะ/สไลด์เอง แล้วเริ่มใหม่หลัง 6 วิ
+  track.addEventListener('pointerdown', function() { stopAuto(); setTimeout(startAuto, 6000) })
+
+  document.getElementById('popPrev').addEventListener('click', function(){
+    stopAuto()
+    track.scrollBy({ left: -W*3, behavior:'smooth' })
+    setTimeout(startAuto, 6000)
+  })
+  document.getElementById('popNext').addEventListener('click', function(){
+    stopAuto()
+    track.scrollBy({ left: W*3, behavior:'smooth' })
+    setTimeout(startAuto, 6000)
+  })
+})()
+</script>
+
+<script>
+;(function(){
+  var ALL_MODELS = <%- JSON.stringify(allModels).replace(/<\//g,'<\\/') %>;
+
+  var EV_BRANDS  = ['BYD','NETA','ORA','TESLA']
+  var KW = {
+    ev:     ['EV','PHEV','DM-I','DOLPHIN','SEAL','ATTO','HAN ','TANG','HYBRID','IONIQ','LEAF'],
+    eco:    ['BRIO','JAZZ','CITY','YARIS','VIOS','ALMERA','MIRAGE','SWIFT','CIAZ','MAZDA 2','FIESTA','SONIC','AVEO','MARCH','NOTE'],
+    suv:    ['FORTUNER','EVEREST','PAJERO','CX-5','CX-3','CR-V','HR-V','RAV4','C-HR','TUCSON','SANTA FE','MU-X','RUSH','HS','ZS','ECLIPSE','OUTLANDER','SPORTAGE','SELTOS','TRAILBLAZER','CAPTIVA','TRAX','VITARA','X1','X2','X3','X4','X5','X6','GLA','GLC','GLE','Q3','Q5','Q7','PRADO','LAND CRUISER','TIGUAN','COMPASS','ECOSPORT','TERIOS','KOLEOS','DUSTER','FREESTYLE'],
+    pickup: ['REVO','D-MAX','RANGER','TRITON','NAVARA','BT-50','COLORADO','SILVERADO','2 DOORS','4 DOORS'],
+    mpv:    ['INNOVA','ALPHARD','VELLFIRE','FREED','XPANDER','MOBILIO','SPIN','ZAFIRA','STAREX','CARNIVAL','SIENTA','AVANZA','STARIA','STREAM','ESTIMA']
+  }
+
+  function matchModel(cat, brand, model) {
+    var b = brand.toUpperCase(), m = model.toUpperCase()
+    if (cat === 'all')    return true
+    if (cat === 'ev')     return EV_BRANDS.includes(b) || KW.ev.some(k => m.includes(k))
+    return KW[cat] ? KW[cat].some(k => m.includes(k)) : false
+  }
+
+  // precompute brand_ids per category
+  function brandsForCat(cat) {
+    if (cat === 'all') return null
+    var ids = new Set()
+    ALL_MODELS.forEach(function(m) {
+      if (matchModel(cat, m.brand, m.model)) ids.add(m.brand_id)
+    })
+    return ids
+  }
+
+  var activeCat = 'all'
+
+  function applyCategory(cat) {
+    activeCat = cat
+
+    // update __catFilter for model AJAX
+    window.__catFilter = cat === 'all' ? null : function(modelName) {
+      // find brand from current brand selection
+      var brandName = (document.getElementById('car_brand') || {}).value || ''
+      return matchModel(cat, brandName, modelName)
+    }
+
+    // filter brand dropdown <li> items
+    var allowedBrands = brandsForCat(cat)
+    var brandList = document.querySelector('#cs-brand .cs-list')
+    if (brandList) {
+      brandList.querySelectorAll('.cs-item:not(.cs-item--ph)').forEach(function(li) {
+        var bid = parseInt(li.dataset.value, 10)
+        var hide = allowedBrands ? !allowedBrands.has(bid) : false
+        li.dataset.catHidden = hide ? '1' : ''
+        li.hidden = hide
+      })
+    }
+
+    // reset brand+model if current brand not in category
+    if (allowedBrands) {
+      var curBrandId = parseInt((document.getElementById('car_brand_id') || {}).value, 10)
+      if (curBrandId && !allowedBrands.has(curBrandId)) {
+        var brandWrap = document.getElementById('cs-brand')
+        if (brandWrap) brandWrap.dispatchEvent(new CustomEvent('cs:pick', { detail: { value: '', label: '' }, bubbles: true }))
+        var valEl = brandWrap && brandWrap.querySelector('.cs-val')
+        if (valEl) { valEl.textContent = 'เลือกยี่ห้อ'; valEl.classList.add('cs-val--ph') }
+        var brandIdIn = document.getElementById('car_brand_id')
+        var brandNameIn = document.getElementById('car_brand')
+        if (brandIdIn)   brandIdIn.value   = ''
+        if (brandNameIn) brandNameIn.value = ''
+      }
+    }
+  }
+
+  document.getElementById('catRow').addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-cat]')
+    if (!btn) return
+    document.querySelectorAll('#catRow [data-cat]').forEach(function(b) { b.classList.remove('is-active') })
+    btn.classList.add('is-active')
+    applyCategory(btn.dataset.cat)
+  })
+})()
+</script>
 
 <!-- FAQ -->
 <section class="faq" id="faq">

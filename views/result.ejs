@@ -94,54 +94,41 @@
                    data-pkg-idx="<%= i %>">
             <!-- Brand -->
             <div class="pkg__brand">
-              <div class="pkg__brand-logo"><%= logoAbbr %></div>
+              <div class="pkg__brand-logo">
+                <% if (pkg.logo_url) { %>
+                  <img src="<%= pkg.logo_url %>" alt="<%= pkg.company_name %>">
+                <% } else { %>
+                  <%= logoAbbr %>
+                <% } %>
+              </div>
               <div>
                 <div class="pkg__brand-name"><%= pkg.company_name %></div>
-                <span class="pkg__brand-class">ประกันชั้น <%= pkg.insurance_class %></span>
-                <div class="pkg__badges">
+                <div class="pkg__badges" style="margin-top:4px">
+                  <span class="pkg__brand-class">ประกันชั้น <%= pkg.insurance_class %></span>
                   <% if (pkg.repair_type === 'authorized') { %><span class="pkg-badge pkg-badge--authorized">ซ่อมศูนย์</span><% } %>
                   <% if (pkg.repair_type === 'garage') { %><span class="pkg-badge pkg-badge--garage">ซ่อมอู่</span><% } %>
                   <% if (pkg.has_flood == 1) { %><span class="pkg-badge pkg-badge--flood">คุ้มน้ำท่วม</span><% } %>
                 </div>
-                <% if (hasDiscount) { %>
-                <div style="margin-top:4px;font-size:12px;color:var(--ink-4);text-decoration:line-through">฿<%= formatNumber(pkg.premium_amount) %></div>
-                <% } %>
+                <button class="pkg-expand-btn" onclick="togglePkgCov('<%= pkgId %>', this)" type="button" style="margin-top:20px">▼ คลิกดูรายละเอียด</button>
               </div>
-            </div>
-
-            <!-- Features from real coverage data -->
-            <div class="pkg__features">
-              <% ownEntries.slice(0, 2).forEach(function(e) { %>
-              <div class="pkg__feat">
-                <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-                <%= e[0] %> <b style="margin-left:auto;color:var(--ink)">฿<%= e[1] %></b>
-              </div>
-              <% }) %>
-              <% thirdEntries.slice(0, 1).forEach(function(e) { %>
-              <div class="pkg__feat">
-                <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-                <%= e[0] %> <b style="margin-left:auto;color:var(--ink)">฿<%= e[1] %></b>
-              </div>
-              <% }) %>
-              <% if (ownEntries.length === 0 && thirdEntries.length === 0) { %>
-              <div class="pkg__feat" style="color:var(--ink-3);font-style:italic">ดูรายละเอียดความคุ้มครอง →</div>
-              <% } %>
-              <% if (ownEntries.length + thirdEntries.length + extraEntries.length > 3) { %>
-              <button class="pkg-expand-btn" onclick="togglePkgCov('<%= pkgId %>', this)" type="button">ดูความคุ้มครองทั้งหมด</button>
-              <% } %>
             </div>
 
             <!-- Price + Actions -->
             <div class="pkg__price">
-              <div class="pkg__price-amount">
-                ฿<%= formatNumber(displayPrice) %><em>/ปี</em>
-              </div>
+              <% if (hasDiscount) { %>
+              <div style="font-size:12px;color:var(--ink-4);text-decoration:line-through;text-align:right">฿<%= formatNumber(pkg.premium_amount) %></div>
+              <% } %>
+              <div class="pkg__price-amount">฿<%= formatNumber(displayPrice) %><em>/ปี</em></div>
               <div class="pkg__actions">
                 <a href="/click/line?token=<%= lead.token %>" class="btn-detail" target="_blank" rel="noopener">
                   สนใจแผนนี้
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                 </a>
                 <button class="btn-compare" type="button" data-idx="<%= i %>">+ เปรียบเทียบ</button>
+                <button class="btn-quote" type="button" onclick="openQuoteModal(<%= i %>)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  ใบเสนอราคา
+                </button>
               </div>
             </div>
 
@@ -152,7 +139,7 @@
               <div class="cov-section">
                 <div class="cov-section-title">ความรับผิดต่อรถของคุณ</div>
                 <table class="cov-table">
-                  <% ownEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val">฿<%= e[1] %></td></tr><% }) %>
+                  <% ownEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val"><%= e[1] %></td></tr><% }) %>
                 </table>
               </div>
               <% } %>
@@ -160,7 +147,7 @@
               <div class="cov-section">
                 <div class="cov-section-title">ความรับผิดต่อบุคคลภายนอก</div>
                 <table class="cov-table">
-                  <% thirdEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val">฿<%= e[1] %></td></tr><% }) %>
+                  <% thirdEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val"><%= e[1] %></td></tr><% }) %>
                 </table>
               </div>
               <% } %>
@@ -168,7 +155,7 @@
               <div class="cov-section">
                 <div class="cov-section-title">ความคุ้มครองเพิ่มเติม</div>
                 <table class="cov-table">
-                  <% extraEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val">฿<%= e[1] %></td></tr><% }) %>
+                  <% extraEntries.forEach(function(e) { %><tr><td class="cov-key"><%= e[0] %></td><td class="cov-val"><%= e[1] %></td></tr><% }) %>
                 </table>
               </div>
               <% } %>
@@ -258,13 +245,55 @@
   </a>
 </div>
 
+<!-- Quote PDF Modal -->
+<div class="quote-modal" id="quoteModal" onclick="if(event.target===this)closeQuoteModal()">
+  <div class="quote-modal__card">
+    <div class="quote-modal__header">
+      <h2>ใบเสนอราคา</h2>
+      <button class="quote-modal__close" onclick="closeQuoteModal()" type="button" aria-label="ปิด">✕</button>
+    </div>
+    <div class="quote-modal__doc" id="quoteModalDoc"></div>
+    <div class="quote-modal__foot">
+      <button class="quote-modal__dl-btn" id="quoteModalDlBtn" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        ดาวน์โหลด PDF
+      </button>
+      <button class="quote-modal__cancel-btn" onclick="closeQuoteModal()" type="button">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // pkg coverage toggle
 function togglePkgCov(id, btn) {
   var el = document.getElementById(id)
   if (!el) return
-  el.classList.toggle('is-open')
-  btn.textContent = el.classList.contains('is-open') ? 'ซ่อนความคุ้มครอง' : 'ดูความคุ้มครองทั้งหมด'
+  var opening = !el.classList.contains('is-open')
+  if (opening) {
+    el.style.display = 'block'
+    el.style.overflow = 'hidden'
+    el.style.height = '0'
+    var h = el.scrollHeight
+    el.style.transition = 'height 0.3s ease'
+    requestAnimationFrame(function() { el.style.height = h + 'px' })
+    el.addEventListener('transitionend', function done() {
+      el.style.height = el.style.overflow = el.style.transition = ''
+      el.classList.add('is-open')
+      el.removeEventListener('transitionend', done)
+    })
+  } else {
+    el.style.overflow = 'hidden'
+    el.style.height = el.scrollHeight + 'px'
+    el.style.transition = 'height 0.3s ease'
+    requestAnimationFrame(function() { el.style.height = '0' })
+    el.addEventListener('transitionend', function done() {
+      el.style.display = 'none'
+      el.style.height = el.style.overflow = el.style.transition = ''
+      el.classList.remove('is-open')
+      el.removeEventListener('transitionend', done)
+    })
+  }
+  btn.textContent = opening ? '▲ ซ่อนรายละเอียด' : '▼ คลิกดูรายละเอียด'
 }
 
 // filter chips
@@ -314,6 +343,7 @@ var PKG_DATA = <%- JSON.stringify(packages.map(function(p) {
   }
 })).replace(/<\//g, '<\\/') %>;
 var LEAD_TOKEN = '<%= lead.token %>';
+var LEAD_DATA = <%- JSON.stringify({ name: lead.name || '', phone: lead.phone || '', brand: lead.brand || '', model: lead.model || '', year: lead.year || '' }).replace(/<\//g, '<\\/') %>;
 
 ;(function() {
   var selected = []
@@ -378,4 +408,54 @@ var LEAD_TOKEN = '<%= lead.token %>';
   }
 
 })()
+
+// Quote modal
+function openQuoteModal(idx) {
+  var pkg = PKG_DATA[idx]
+  if (!pkg) return
+  var price = pkg.price
+  var net   = Math.round(price / 1.07428)
+  var tax   = Math.round(price - net)
+  var qNo   = 'QT-' + String(pkg.id).padStart(6, '0')
+  var today = new Date().toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' })
+  var expiry = new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' })
+  var repairLabel = pkg.repair_type === 'authorized' ? 'ซ่อมศูนย์' : 'ซ่อมอู่'
+  function fmt(n) { return Number(n).toLocaleString('th-TH') }
+
+  var covItems = ['<span class="qdoc__cov-ic">✓</span> ประกันชั้น ' + pkg.insurance_class + ' · ' + repairLabel]
+  if (pkg.has_flood) covItems.push('<span class="qdoc__cov-ic">✓</span> คุ้มครองภัยน้ำท่วม')
+  if (pkg.coverage && pkg.coverage.own_vehicle) {
+    Object.entries(pkg.coverage.own_vehicle).slice(0, 3).forEach(function(e) {
+      covItems.push('<span class="qdoc__cov-ic">✓</span> ' + e[0] + ': ' + e[1])
+    })
+  }
+
+  document.getElementById('quoteModalDoc').innerHTML =
+    '<div class="qdoc">'
+    + '<div class="qdoc__hdr"><div class="qdoc__hdr-title">ใบเสนอราคาประกันภัยรถยนต์</div><div class="qdoc__hdr-sub">' + (pkg.company || '') + '</div></div>'
+    + '<div class="qdoc__meta"><span>เลขที่: ' + qNo + '</span><span>วันที่: ' + today + '</span></div>'
+    + '<div class="qdoc__grid">'
+      + '<div><div class="qdoc__block-label">ผู้เอาประกัน</div><div class="qdoc__block-val">' + (LEAD_DATA.name || '-') + '</div><div class="qdoc__block-val2">' + (LEAD_DATA.phone || '') + '</div></div>'
+      + '<div><div class="qdoc__block-label">รถยนต์</div><div class="qdoc__block-val">' + LEAD_DATA.brand + ' ' + LEAD_DATA.model + '</div><div class="qdoc__block-val2">ปี ' + LEAD_DATA.year + '</div></div>'
+    + '</div>'
+    + '<div class="qdoc__cov">' + covItems.map(function(i){ return '<div class="qdoc__cov-item">' + i + '</div>' }).join('') + '</div>'
+    + '<div class="qdoc__price">'
+      + '<div class="qdoc__price-row"><span>เบี้ยประกันสุทธิ</span><span>' + fmt(net) + ' บาท</span></div>'
+      + '<div class="qdoc__price-row"><span>อากรแสตมป์ + ภาษีมูลค่าเพิ่ม</span><span>' + fmt(tax) + ' บาท</span></div>'
+      + '<div class="qdoc__price-row qdoc__price-row--total"><span>รวมทั้งสิ้น</span><span>฿' + fmt(price) + '</span></div>'
+    + '</div>'
+    + '<div class="qdoc__footer">ใบเสนอราคามีผลถึง ' + expiry + '</div>'
+    + '</div>'
+
+  document.getElementById('quoteModalDlBtn').onclick = function() {
+    window.open('/api/quote-pdf?token=' + LEAD_TOKEN + '&pkg_id=' + pkg.id, '_blank')
+  }
+  document.getElementById('quoteModal').classList.add('is-open')
+  document.body.style.overflow = 'hidden'
+}
+
+function closeQuoteModal() {
+  document.getElementById('quoteModal').classList.remove('is-open')
+  document.body.style.overflow = ''
+}
 </script>

@@ -730,7 +730,7 @@ module.exports = async function adminPlugin(fastify, opts) {
         SUM(CASE WHEN l.status='converted' THEN 1 ELSE 0 END) AS converted_leads,
         SUM(CASE WHEN l.commission_paid=0 AND l.commission_amount IS NOT NULL THEN l.commission_amount ELSE 0 END) AS pending_commission,
         SUM(CASE WHEN l.commission_paid=1 THEN l.commission_amount ELSE 0 END) AS paid_commission,
-        au.username AS admin_username
+        ANY_VALUE(au.username) AS admin_username
       FROM affiliates a
       LEFT JOIN leads l ON l.affiliate_id = a.id
       LEFT JOIN admin_users au ON au.affiliate_id = a.id AND au.role='affiliate'

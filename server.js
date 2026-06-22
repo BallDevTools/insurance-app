@@ -65,6 +65,30 @@ async function getPublicSettings(affiliateId = 0) {
 const getBrands    = () => getCached('brands',    10 * 60 * 1000, async () => { const [r] = await db.query('SELECT id, name FROM scraped_brands ORDER BY name'); return r })
 const getCompanies = () => getCached('companies', 10 * 60 * 1000, async () => { const [r] = await db.query('SELECT id, name, short_name, logo_url FROM companies WHERE is_active = 1 ORDER BY name').catch(() => [[]]); return r })
 const getProvinces = () => getCached('provinces', 10 * 60 * 1000, async () => { const [r] = await db.query('SELECT name FROM provinces ORDER BY name'); return r })
+const getAllModels = () => getCached('all_models', 10 * 60 * 1000, async () => {
+  const [rows] = await db.query(
+    'SELECT sm.id, sm.name AS model, sb.id AS brand_id, sb.name AS brand FROM scraped_models sm JOIN scraped_brands sb ON sb.id = sm.brand_id'
+  ).catch(() => [[]])
+  return rows
+})
+const getPopularCars = () => getCached('popular_cars', 10 * 60 * 1000, async () => {
+  const [rows] = await db.query(`
+    SELECT sm.id AS model_id, sm.name AS model_name, sb.name AS brand_name,
+           sp.insurance_class,
+           MIN(COALESCE(sp.premium_discounted, sp.premium_amount)) AS min_price,
+           MAX(sp.car_year) AS year,
+           COUNT(*) AS cnt
+    FROM scraped_packages sp
+    JOIN scraped_models sm ON sm.id = sp.model_id
+    JOIN scraped_brands sb ON sb.id = sm.brand_id
+    WHERE sp.car_year >= YEAR(NOW()) - 2 AND sp.insurance_class = '1'
+    GROUP BY sm.id
+    HAVING cnt >= 2
+    ORDER BY cnt DESC, min_price ASC
+    LIMIT 10
+  `).catch(() => [[]])
+  return rows
+})
 
 // =============================================
 // Plugins
@@ -180,7 +204,7 @@ fastify.get('/', async (req, reply) => {
     })
   }
 
-  const [brands, insurers] = await Promise.all([getBrands(), getCompanies()])
+  const [brands, insurers, popularCars, allModels] = await Promise.all([getBrands(), getCompanies(), getPopularCars(), getAllModels()])
   const currentYear = new Date().getFullYear()
   const years = []
   for (let y = currentYear; y >= currentYear - 20; y--) years.push(y)
@@ -191,7 +215,7 @@ fastify.get('/', async (req, reply) => {
 
   return reply.view('index.ejs', {
     title: 'คำนวณเบี้ยประกันรถยนต์',
-    brands, insurers, years, errors: {}, old: {},
+    brands, insurers, popularCars, allModels, years, errors: {}, old: {},
     utm: req.session.utm || {}, csrfToken,
     lineOaUrl: pub.line_oa_url || null,
     gtmHeadCode: pub.gtm_head_code || '',
@@ -446,17 +470,20 @@ fastify.get('/result/:token', async (req, reply) => {
   if (lead.model_id && lead.year && lead.insurance_type) {
     const scraperClass = CLASS_MAP[lead.insurance_type]
     const [pkgRows] = await db.query(
-      `SELECT id, company_name, insurance_class, premium_amount, premium_discounted, coverage,
-              repair_type, has_flood
-       FROM scraped_packages
-       WHERE model_id = ? AND car_year = ? AND insurance_class = ?
-       ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
+      `SELECT sp.id, sp.company_name, sp.insurance_class, sp.premium_amount, sp.premium_discounted, sp.coverage,
+              sp.repair_type, sp.has_flood, c.logo_url
+       FROM scraped_packages sp
+       LEFT JOIN companies c ON c.name LIKE CONCAT(sp.company_name, '%')
+       WHERE sp.model_id = ? AND sp.car_year = ? AND sp.insurance_class = ?
+       ORDER BY COALESCE(sp.premium_discounted, sp.premium_amount) ASC`,
       [lead.model_id, lead.year, scraperClass]
     ).catch(() => db.query(
-      `SELECT id, company_name, insurance_class, premium_amount, premium_discounted, coverage
-       FROM scraped_packages
-       WHERE model_id = ? AND car_year = ? AND insurance_class = ?
-       ORDER BY COALESCE(premium_discounted, premium_amount) ASC`,
+      `SELECT sp.id, sp.company_name, sp.insurance_class, sp.premium_amount, sp.premium_discounted, sp.coverage,
+              c.logo_url
+       FROM scraped_packages sp
+       LEFT JOIN companies c ON c.name LIKE CONCAT(sp.company_name, '%')
+       WHERE sp.model_id = ? AND sp.car_year = ? AND sp.insurance_class = ?
+       ORDER BY COALESCE(sp.premium_discounted, sp.premium_amount) ASC`,
       [lead.model_id, lead.year, scraperClass]
     ).catch(() => [[]]))
     packages = pkgRows.map(pkg => ({
@@ -710,6 +737,152 @@ fastify.get('/compare-view', async (req, reply) => {
     gtmHeadCode: pub.gtm_head_code || '',
     gtmBodyCode: pub.gtm_body_code || ''
   }, { layout: PUB_LAYOUT })
+})
+
+// =============================================
+// GET /quick — popular card shortcut → result
+// =============================================
+fastify.get('/quick', async (req, reply) => {
+  const { model_id, year, type } = req.query
+  const modelId  = parseInt(model_id, 10)
+  const carYear  = parseInt(year, 10)
+  const insType  = ['class1','class2plus','class3plus'].includes(type) ? type : 'class1'
+  if (!modelId || !carYear) return reply.redirect('/')
+
+  const [[modelRow]] = await db.query(
+    `SELECT sm.id, sm.name AS model_name, sb.name AS brand_name
+     FROM scraped_models sm JOIN scraped_brands sb ON sb.id = sm.brand_id
+     WHERE sm.id = ?`, [modelId]
+  ).catch(() => [[null]])
+  if (!modelRow) return reply.redirect('/')
+
+  const token = crypto.randomBytes(16).toString('hex')
+  const visitorId = req.cookies?.visitor_id || null
+  const affiliateId = await resolveAffiliate(req)
+  await db.query(
+    `INSERT INTO leads (token, source, brand, model, model_id, year, insurance_type, funnel_stage, visitor_id, affiliate_id, ip_address)
+     VALUES (?, 'popular', ?, ?, ?, ?, ?, 'hot', ?, ?, ?)`,
+    [token, modelRow.brand_name, modelRow.model_name, modelId, carYear, insType, 'hot', visitorId, affiliateId, clientIp(req)]
+  ).catch(() => {})
+
+  return reply.redirect('/result/' + token)
+})
+
+// =============================================
+// GET /api/quote-pdf — generate PDF quotation
+// =============================================
+fastify.get('/api/quote-pdf', async (req, reply) => {
+  const { token, pkg_id } = req.query
+  if (!token || !/^[0-9a-f]{32}$/.test(token)) return reply.code(400).send({ error: 'invalid' })
+  const pkgId = parseInt(pkg_id, 10)
+  if (!pkgId) return reply.code(400).send({ error: 'invalid' })
+
+  const [[lead]] = await db.query('SELECT * FROM leads WHERE token = ?', [token]).catch(() => [[null]])
+  if (!lead) return reply.code(404).send({ error: 'not found' })
+
+  const [[pkg]] = await db.query('SELECT * FROM scraped_packages WHERE id = ?', [pkgId]).catch(() => [[null]])
+  if (!pkg) return reply.code(404).send({ error: 'not found' })
+
+  const pub = await getPublicSettings(lead.affiliate_id || 0)
+  let coverage = {}
+  try { coverage = typeof pkg.coverage === 'string' ? JSON.parse(pkg.coverage) : (pkg.coverage || {}) } catch {}
+
+  const displayPrice = pkg.premium_discounted && parseFloat(pkg.premium_discounted) < parseFloat(pkg.premium_amount)
+    ? parseFloat(pkg.premium_discounted) : parseFloat(pkg.premium_amount)
+  const net = Math.round(displayPrice / 1.07428)
+  const tax = Math.round(displayPrice - net)
+
+  const PDFDocument = require('pdfkit')
+  const FONT = path.join(__dirname, 'public/fonts/Sarabun-Regular.ttf')
+  const doc = new PDFDocument({ size: 'A4', margin: 50 })
+  const chunks = []
+  doc.on('data', c => chunks.push(c))
+
+  const quoteNo = 'QT-' + String(lead.id).padStart(6, '0') + String(pkgId).padStart(3, '0')
+  const today  = new Date().toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' })
+  const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  await new Promise((resolve, reject) => {
+    doc.on('end', resolve)
+    doc.on('error', reject)
+    doc.registerFont('Sarabun', FONT)
+    doc.font('Sarabun')
+
+    const W = doc.page.width - 100
+    const L = 50
+
+    // Header
+    doc.rect(L, 50, W, 64).fill('#1a3a5c')
+    doc.fillColor('#ffffff').fontSize(18).text('ใบเสนอราคาประกันภัยรถยนต์', L + 14, 64, { width: W - 28 })
+    doc.fontSize(11).text(pub.site_name || '724Thai Insurance', L + 14, 87, { width: W - 28 })
+
+    // Quote meta
+    doc.fillColor('#1a3a5c').fontSize(11)
+      .text('เลขที่: ' + quoteNo, L, 130, { width: W / 2 })
+      .text('วันที่: ' + today, L + W / 2, 130, { width: W / 2, align: 'right' })
+    doc.moveTo(L, 152).lineTo(L + W, 152).strokeColor('#e2e8f0').lineWidth(1).stroke()
+
+    // Customer + car
+    doc.fillColor('#94a3b8').fontSize(9).text('ผู้เอาประกัน', L, 162)
+    doc.fillColor('#1a3a5c').fontSize(13).text(lead.name || '-', L, 176)
+    doc.fillColor('#475569').fontSize(11).text(lead.phone || '', L, 194)
+
+    doc.fillColor('#94a3b8').fontSize(9).text('รถยนต์', L + 300, 162)
+    doc.fillColor('#1a3a5c').fontSize(13).text((lead.brand || '') + ' ' + (lead.model || ''), L + 300, 176)
+    doc.fillColor('#475569').fontSize(11).text('ปี ' + (lead.year || ''), L + 300, 194)
+    doc.moveTo(L, 218).lineTo(L + W, 218).strokeColor('#e2e8f0').stroke()
+
+    // Company + class
+    doc.rect(L, 228, W, 34).fill('#eff6ff')
+    doc.fillColor('#1a3a5c').fontSize(13)
+      .text(pkg.company_name + '  ·  ประกันชั้น ' + pkg.insurance_class, L + 12, 239, { width: W - 24 })
+
+    // Coverage items
+    let y = 278
+    const repairLabel = pkg.repair_type === 'authorized' ? 'ซ่อมศูนย์' : 'ซ่อมอู่'
+    const covItems = ['✓  ประกันชั้น ' + pkg.insurance_class + '  ·  ' + repairLabel]
+    if (pkg.has_flood) covItems.push('✓  คุ้มครองภัยน้ำท่วม')
+    if (coverage.own_vehicle) {
+      Object.entries(coverage.own_vehicle).slice(0, 4).forEach(([k, v]) => covItems.push('✓  ' + k + ':  ' + v))
+    }
+    if (coverage.third_party) {
+      Object.entries(coverage.third_party).slice(0, 2).forEach(([k, v]) => covItems.push('✓  ' + k + ':  ' + v))
+    }
+    doc.fillColor('#0f766e').fontSize(12)
+    covItems.forEach(item => { doc.text(item, L + 8, y); y += 22 })
+
+    // Price box
+    y = Math.max(y + 20, 460)
+    doc.rect(L, y, W, 96).fill('#f8fafc')
+    doc.moveTo(L, y).lineTo(L + W, y).strokeColor('#e2e8f0').stroke()
+    doc.moveTo(L, y + 96).lineTo(L + W, y + 96).strokeColor('#e2e8f0').stroke()
+    doc.fillColor('#475569').fontSize(11)
+      .text('เบี้ยประกันสุทธิ', L + 14, y + 12, { width: W - 28 })
+      .text(formatNumber(net) + ' บาท', L + 14, y + 12, { width: W - 28, align: 'right' })
+      .text('อากรแสตมป์ + ภาษีมูลค่าเพิ่ม', L + 14, y + 34, { width: W - 28 })
+      .text(formatNumber(tax) + ' บาท', L + 14, y + 34, { width: W - 28, align: 'right' })
+    doc.moveTo(L + 14, y + 55).lineTo(L + W - 14, y + 55).strokeColor('#cbd5e1').stroke()
+    doc.fillColor('#1a3a5c').fontSize(14)
+      .text('รวมเบี้ยประกันทั้งสิ้น', L + 14, y + 64, { width: W - 28 })
+    doc.fillColor('#0f766e').fontSize(18)
+      .text('฿' + formatNumber(displayPrice), L + 14, y + 60, { width: W - 28, align: 'right' })
+
+    // Footer
+    const fy = y + 116
+    doc.moveTo(L, fy).lineTo(L + W, fy).strokeColor('#e2e8f0').stroke()
+    doc.fillColor('#94a3b8').fontSize(9)
+      .text('ใบเสนอราคามีผลถึง: ' + expiry + '  ·  ราคานี้ยังไม่รวมส่วนลดพิเศษ กรุณาติดต่อเจ้าหน้าที่เพื่อยืนยันก่อนชำระเงิน', L, fy + 10, { width: W, align: 'center' })
+    if (pub.site_phone) {
+      doc.fillColor('#64748b').fontSize(10).text('โทร: ' + pub.site_phone, L, fy + 28, { width: W, align: 'center' })
+    }
+
+    doc.end()
+  })
+
+  reply.header('Content-Type', 'application/pdf')
+  reply.header('Content-Disposition', 'attachment; filename="' + quoteNo + '.pdf"')
+  return reply.send(Buffer.concat(chunks))
 })
 
 // =============================================

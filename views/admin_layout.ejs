@@ -36,6 +36,7 @@
         { href:'/admin/bot-knowledge', icon:'brain',            label:'สอนบอท',           key:'bot',         notAffiliate:true },
         { href:'/admin/companies',    icon:'building-2',       label:'บริษัทประกัน',     key:'companies',   superadmin:true },
         { href:'/admin/scraper',      icon:'bot',              label:'Scraper',           key:'scraper',     superadmin:true },
+        { href:'/admin/tracking',     icon:'map-pin',          label:'Visitor Tracking',  key:'tracking',    superadmin:true },
       ] %>
       <% menu.forEach(item => { %>
         <% const isSA = admin && admin.role === 'superadmin' %>

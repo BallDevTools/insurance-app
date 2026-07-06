@@ -21,6 +21,7 @@ const { sanitizeBody }    = require('./services/sanitize')
 const { notifyAdminNewLead } = require('./services/lineBot')
 const { startScraperScheduler } = require('./scraper/scheduler')
 const { lookupIp } = require('./services/geoip')
+const { parseUA }  = require('./services/uaParser')
 const clientIp = req => req.headers['x-real-ip'] || (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip
 
 const _cache = new Map()
@@ -122,7 +123,10 @@ fastify.register(require('@fastify/session'), {
   secret: process.env.SESSION_SECRET || 'insurance-admin-secret-key-2026-minimum32ch',
   store: require('./services/sessionStore'),
   rolling: true,
-  cookie: { secure: false, httpOnly: true, sameSite: 'lax', maxAge: 14 * 24 * 60 * 60 * 1000 }
+  cookie: { secure: false, httpOnly: true, sameSite: 'lax', maxAge: 14 * 24 * 60 * 60 * 1000 },
+  errorHandler: (err, req, reply) => {
+    req.log.error(err, 'session store error — continuing with empty session')
+  }
 })
 
 // =============================================
@@ -382,6 +386,7 @@ fastify.post('/quote', {
   const geoData     = await lookupIp(clientIp(req)).catch(() => null)
   const queryParams = req.session?.queryParams ? JSON.stringify(req.session.queryParams) : null
   const affiliateId = await resolveAffiliate(req)
+  const userAgent   = (req.headers['user-agent'] || '').substring(0, 500) || null
 
   // validate phone/name (optional)
   let cleanPhone = null
@@ -412,6 +417,7 @@ fastify.post('/quote', {
          ip_address=?, ip_country=?, ip_city=?, ip_isp=?, ip_mobile=?, ip_proxy=?,
          query_params=COALESCE(query_params,?),
          affiliate_id=COALESCE(affiliate_id,?),
+         user_agent=COALESCE(user_agent,?),
          updated_at=NOW()
        WHERE token=?`,
       [brandName, modelName, modelId > 0 ? modelId : null, yearInt, insurance_type,
@@ -420,7 +426,7 @@ fastify.post('/quote', {
        visitorId,
        clientIp(req), geoData?.country||null, geoData?.city||null, geoData?.isp||null,
        geoData?.mobile||0, geoData?.proxy||0,
-       queryParams, affiliateId, resultToken]
+       queryParams, affiliateId, userAgent, resultToken]
     )
   } else {
     // สร้าง lead ใหม่
@@ -430,13 +436,13 @@ fastify.post('/quote', {
         (token, source, utm_campaign, utm_medium, utm_content,
          brand, model, model_id, year,
          insurance_type, funnel_stage, name, phone, best_price, packages_json,
-         visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, ip_geo, query_params, affiliate_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'hot', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, ip_geo, query_params, affiliate_id, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'hot', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [resultToken, source, campaign, medium, content,
        brandName, modelName, modelId > 0 ? modelId : null, yearInt,
        insurance_type, cleanName, cleanPhone, bestPrice, JSON.stringify(packages),
        visitorId, clientIp(req), geoData?.country||null, geoData?.city||null, geoData?.isp||null,
-       geoData?.mobile||0, geoData?.proxy||0, geoData ? JSON.stringify(geoData) : null, queryParams, affiliateId]
+       geoData?.mobile||0, geoData?.proxy||0, geoData ? JSON.stringify(geoData) : null, queryParams, affiliateId, userAgent]
     )
   }
 

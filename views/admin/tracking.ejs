@@ -1,0 +1,163 @@
+<!-- FILTER -->
+<div class="adm-card adm-filter-card">
+  <form action="/admin/tracking" method="GET" class="adm-filter-form">
+    <input type="text" name="q" value="<%= filters.q %>" placeholder="🔍 ค้นหา IP / เมือง / ISP / ประเทศ / ชื่อ">
+    <button type="submit" class="adm-btn adm-btn-primary">ค้นหา</button>
+    <a href="/admin/tracking" class="adm-btn adm-btn-ghost">ล้าง</a>
+  </form>
+</div>
+
+<!-- SUMMARY CARDS -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+  <%
+    const deviceCount = { Mobile:0, Tablet:0, Desktop:0, unknown:0 }
+    const browserCount = {}
+    const osCount = {}
+    leads.forEach(l => {
+      const d = l.ua?.device_type || 'unknown'
+      deviceCount[d] = (deviceCount[d]||0) + 1
+      const b = l.ua?.browser || 'Other'
+      browserCount[b] = (browserCount[b]||0) + 1
+      const o = l.ua?.os || 'Other'
+      osCount[o] = (osCount[o]||0) + 1
+    })
+    const deviceIcons = { Mobile:'📱', Tablet:'📟', Desktop:'🖥️', unknown:'❓' }
+  %>
+  <% Object.entries(deviceCount).filter(([,v])=>v>0).forEach(([k,v]) => { %>
+  <div class="adm-card" style="text-align:center;padding:16px 12px;margin:0">
+    <div style="font-size:1.8rem"><%= deviceIcons[k]||'❓' %></div>
+    <div style="font-size:1.4rem;font-weight:700;color:#1e293b"><%= v %></div>
+    <div style="font-size:.8rem;color:#64748b"><%= k %></div>
+  </div>
+  <% }) %>
+  <div class="adm-card" style="text-align:center;padding:16px 12px;margin:0">
+    <div style="font-size:1.8rem">👁️</div>
+    <div style="font-size:1.4rem;font-weight:700;color:#1e293b"><%= total %></div>
+    <div style="font-size:.8rem;color:#64748b">ทั้งหมด (ทุกหน้า)</div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="adm-card adm-card-full">
+  <div class="adm-card-header">
+    <div class="adm-card-title">Visitor Tracking <span class="adm-badge"><%= total %></span></div>
+  </div>
+  <div class="adm-table-wrap">
+    <table class="adm-table" style="font-size:.82rem">
+      <thead><tr>
+        <th>วันที่</th>
+        <th>Lead</th>
+        <th>Device / Browser / OS</th>
+        <th>IP Address</th>
+        <th>ที่ตั้ง</th>
+        <th>ISP / Network</th>
+        <th>Flag</th>
+        <th>UTM</th>
+        <th>UA</th>
+      </tr></thead>
+      <tbody>
+        <% if (!leads.length) { %>
+          <tr><td colspan="9" class="adm-empty-cell">ไม่พบข้อมูล</td></tr>
+        <% } %>
+        <% leads.forEach(l => { %>
+        <% const g = l.geo %>
+        <tr>
+          <!-- วันที่ -->
+          <td style="white-space:nowrap;color:#6b7280">
+            <%= new Date(l.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) %><br>
+            <span style="font-size:.75rem"><%= new Date(l.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) %></span>
+          </td>
+
+          <!-- Lead -->
+          <td>
+            <% if (l.name) { %><strong><%= l.name %></strong><br><% } %>
+            <span style="color:#6b7280"><%= l.brand %> <%= l.model %> <%= l.year %></span><br>
+            <% const stageColor = {cold:'#64748b',warm:'#f59e0b',hot:'#ef4444'} %>
+            <span style="font-size:.72rem;background:<%= stageColor[l.funnel_stage]||'#94a3b8' %>20;color:<%= stageColor[l.funnel_stage]||'#64748b' %>;padding:1px 6px;border-radius:8px">
+              <%= {cold:'👀 แวะดู',warm:'🤔 คิดอยู่',hot:'💰 พร้อมซื้อ'}[l.funnel_stage]||l.funnel_stage %>
+            </span>
+          </td>
+
+          <!-- Device / Browser / OS -->
+          <td>
+            <% const devIcon = {Mobile:'📱',Tablet:'📟',Desktop:'🖥️',unknown:'❓'} %>
+            <span style="font-size:1.1rem"><%= devIcon[l.ua?.device_type]||'❓' %></span>
+            <strong style="color:#1e293b"><%= l.ua?.browser||'?' %></strong>
+            <% if (l.ua?.browser_version) { %><span style="color:#94a3b8"> <%= l.ua.browser_version %></span><% } %>
+            <br>
+            <span style="color:#64748b;font-size:.78rem"><%= l.ua?.os||'Unknown OS' %></span>
+          </td>
+
+          <!-- IP Address -->
+          <td>
+            <code style="font-size:.8rem;background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#334155"><%= l.ip_address||'-' %></code>
+          </td>
+
+          <!-- ที่ตั้ง -->
+          <td>
+            <% if (l.ip_country || l.ip_city) { %>
+              <% const flag = l.ip_country ? String.fromCodePoint(...l.ip_country.toUpperCase().split('').map(c=>c.charCodeAt(0)+0x1F1A5)) : '' %>
+              <span><%= flag %></span>
+              <% if (g?.city) { %><strong><%= g.city %></strong><% } else if (l.ip_city) { %><strong><%= l.ip_city %></strong><% } %>
+              <br><span style="color:#6b7280;font-size:.78rem"><%= g?.region||'' %><% if(g?.region&&g?.country){%>, <% } %><%= g?.country||l.ip_country||'' %></span>
+              <% if (g?.timezone) { %><br><span style="color:#94a3b8;font-size:.73rem">🕐 <%= g.timezone %></span><% } %>
+            <% } else { %><span style="color:#d1d5db">-</span><% } %>
+          </td>
+
+          <!-- ISP / Network -->
+          <td style="max-width:180px">
+            <% if (g?.isp || l.ip_isp) { %>
+              <span style="color:#374151"><%= g?.isp||l.ip_isp %></span>
+              <% if (g?.org && g?.org !== g?.isp) { %><br><span style="color:#6b7280;font-size:.75rem"><%= g.org %></span><% } %>
+              <% if (g?.asname) { %><br><span style="color:#94a3b8;font-size:.72rem"><%= g.asname %></span><% } %>
+            <% } else { %><span style="color:#d1d5db">-</span><% } %>
+          </td>
+
+          <!-- Flags (mobile/proxy/hosting) -->
+          <td style="text-align:center;white-space:nowrap">
+            <% const mobile  = l.ip_mobile  || g?.mobile %>
+            <% const proxy   = l.ip_proxy   || g?.proxy %>
+            <% const hosting = g?.hosting %>
+            <% if (mobile)  { %><span title="Mobile network" style="font-size:1rem">📶</span> <% } %>
+            <% if (proxy)   { %><span title="Proxy / VPN" style="font-size:1rem;color:#ef4444" title="Proxy/VPN">🛡️</span> <% } %>
+            <% if (hosting) { %><span title="Hosting / Bot" style="font-size:1rem;color:#f59e0b">🤖</span> <% } %>
+            <% if (!mobile && !proxy && !hosting) { %><span style="color:#d1d5db">-</span><% } %>
+          </td>
+
+          <!-- UTM -->
+          <td style="max-width:150px">
+            <% if (l.utm_campaign || l.utm_medium || l.source !== 'organic') { %>
+              <span style="font-size:.75rem;background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:8px"><%= l.source %></span>
+              <% if (l.utm_campaign) { %><br><span style="color:#374151;font-size:.75rem">📣 <%= l.utm_campaign %></span><% } %>
+              <% if (l.utm_medium)   { %><br><span style="color:#6b7280;font-size:.73rem"><%= l.utm_medium %></span><% } %>
+            <% } else { %><span style="color:#94a3b8;font-size:.78rem">organic</span><% } %>
+          </td>
+
+          <!-- UA full (toggle) -->
+          <td>
+            <% if (l.user_agent) { %>
+            <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"
+                    style="font-size:.7rem;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;cursor:pointer;color:#64748b">
+              แสดง UA
+            </button>
+            <div style="display:none;font-size:.68rem;color:#6b7280;word-break:break-all;max-width:220px;margin-top:4px;background:#f8fafc;padding:4px;border-radius:4px">
+              <%= l.user_agent %>
+            </div>
+            <% } else { %><span style="color:#d1d5db">-</span><% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+  <div class="adm-pagination" style="margin-top:1rem">
+    <% for (let p = Math.max(1,page-3); p <= Math.min(totalPages,page+3); p++) { %>
+      <a href="/admin/tracking?page=<%= p %>&q=<%= filters.q %>"
+         class="adm-page-btn <%= p===page?'active':'' %>"><%= p %></a>
+    <% } %>
+  </div>
+  <% } %>
+</div>

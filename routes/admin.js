@@ -830,4 +830,45 @@ module.exports = async function adminPlugin(fastify, opts) {
       logs, total, page, totalPages: Math.ceil(total / limit)
     })
   })
+
+  fastify.get('/tracking', async (req, reply) => {
+    if (req.session.admin?.role !== 'superadmin') return reply.redirect('/admin')
+    const page   = Math.max(1, parseInt(req.query.page) || 1)
+    const limit  = 30
+    const offset = (page - 1) * limit
+    const { q = '', device = '', browser = '', os = '' } = req.query
+
+    let where = 'WHERE 1=1'
+    const p = []
+    if (q) {
+      where += ' AND (ip_address LIKE ? OR ip_city LIKE ? OR ip_isp LIKE ? OR ip_country LIKE ? OR name LIKE ?)'
+      const like = `%${q}%`
+      p.push(like, like, like, like, like)
+    }
+
+    const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total FROM leads ${where}`, p)
+    const [rows] = await db.query(
+      `SELECT id, name, phone, brand, model, year, insurance_type, funnel_stage,
+              source, utm_campaign, utm_medium, utm_content,
+              visitor_id, ip_address, ip_country, ip_city, ip_isp, ip_mobile, ip_proxy, ip_geo,
+              user_agent, created_at
+       FROM leads ${where}
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...p, limit, offset]
+    )
+
+    const { parseUA } = require('../services/uaParser')
+    const leads = rows.map(l => ({
+      ...l,
+      ua: parseUA(l.user_agent),
+      geo: (() => { try { return l.ip_geo ? JSON.parse(l.ip_geo) : null } catch { return null } })()
+    }))
+
+    return av(reply, 'tracking.ejs', {
+      title: 'Visitor Tracking', activePage: 'tracking', admin: req.session.admin,
+      leads, total, page, totalPages: Math.ceil(total / limit),
+      filters: { q, device, browser, os }
+    })
+  })
 }

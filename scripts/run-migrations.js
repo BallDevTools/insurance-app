@@ -25,6 +25,7 @@ const ORDER = [
   'migrate_affiliate_clicks.sql',
   'migrate_companies_and_pkg_fields.sql',
   'migrate_ip_geo.sql',
+  'migrate_user_agent.sql',
 ]
 
 // MySQL 8.0 ไม่รองรับ IF NOT EXISTS ใน ALTER TABLE ADD COLUMN/INDEX
